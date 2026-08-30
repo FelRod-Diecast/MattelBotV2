@@ -49,7 +49,13 @@ const response = await fetch(
 `https://creations.mattel.com/products.json?page=${page}`
 );
  
-const data = await response.json();
+const text = await response.text();
+ 
+if (text.startsWith("<!DOCTYPE")) {
+break;
+}
+ 
+const data = JSON.parse(text);
  
 if (!data.products || data.products.length === 0) {
 break;
