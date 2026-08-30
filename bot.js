@@ -64,11 +64,16 @@ async function initializeProducts() {
 
     if (Object.keys(savedProducts).length === 0) {
       products.forEach(product => {
-        savedProducts[product.id] = {
-          title: product.title,
-          handle: product.handle,
-          detectedAt: new Date().toISOString()
-        };
+       const inStock =
+product.variants?.some(v => v.available);
+ 
+savedProducts[product.id] = {
+title: product.title,
+handle: product.handle,
+available: inStock,
+detectedAt: new Date().toISOString(),
+lastSeen: new Date().toISOString()
+};
       });
 
       saveProducts(savedProducts);
@@ -104,6 +109,11 @@ async function scanForNewProducts() {
     const channel = await client.channels.fetch(CHANNEL_ID);
 
     for (const product of products) {
+      const inStock =
+product.variants?.some(v => v.available);
+ 
+const existingProduct =
+savedProducts[product.id];
       if (!savedProducts[product.id]) {
         const price =
           product.variants?.[0]?.price || "Unknown";
@@ -119,11 +129,13 @@ async function scanForNewProducts() {
           `🔗 https://creations.mattel.com/products/${product.handle}`
         );
 
-        savedProducts[product.id] = {
-          title: product.title,
-          handle: product.handle,
-          detectedAt: new Date().toISOString()
-        };
+       savedProducts[product.id] = {
+title: product.title,
+handle: product.handle,
+available: inStock,
+detectedAt: new Date().toISOString(),
+lastSeen: new Date().toISOString()
+};
 
         saveProducts(savedProducts);
 
