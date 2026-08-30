@@ -16,6 +16,7 @@ const client = new Client({
 
 const DATA_FILE = "./scanData.json";
 const CHANNEL_ID = process.env.CHANNEL_ID;
+const STATS_FILE = "./stats.json";
 
 // =========================
 // Product Storage
@@ -35,7 +36,25 @@ function saveProducts(data) {
     JSON.stringify(data, null, 2)
   );
 }
-
+JavaScript
+function loadStats() {
+try {
+return JSON.parse(fs.readFileSync(STATS_FILE, "utf8"));
+} catch {
+return {
+newProductsToday: 0,
+restocksToday: 0,
+soldOutToday: 0
+};
+}
+}
+ 
+function saveStats(stats) {
+fs.writeFileSync(
+STATS_FILE,
+JSON.stringify(stats, null, 2)
+);
+}
 // =========================
 // Mattel API
 // =========================
@@ -86,6 +105,8 @@ async function initializeProducts() {
 
     const savedProducts = loadProducts();
 
+    const stats = loadStats();
+
     if (Object.keys(savedProducts).length === 0) {
       products.forEach(product => {
        const inStock =
@@ -101,6 +122,7 @@ lastSeen: new Date().toISOString()
       });
 
       saveProducts(savedProducts);
+saveStats(stats);
 
       console.log(
         `✅ Initialized ${products.length} products`
@@ -160,6 +182,8 @@ detectedAt: new Date().toISOString(),
 lastSeen: new Date().toISOString()
 };
  
+stats.newProductsToday++;
+ 
 console.log(
 `🆕 New Product Found: ${product.title}`
 );
@@ -177,6 +201,8 @@ await channel.send(
 `🔗 https://creations.mattel.com/products/${product.handle}`
 );
  
+stats.restocksToday++;
+ 
 console.log(
 `🔥 Restock Detected: ${product.title}`
 );
@@ -192,6 +218,8 @@ await channel.send(
 `📦 ${product.title}\n` +
 `🔗 https://creations.mattel.com/products/${product.handle}`
 );
+ 
+stats.soldOutToday++;
  
 console.log(
 `❌ Sold Out: ${product.title}`
