@@ -36,7 +36,7 @@ function saveProducts(data) {
     JSON.stringify(data, null, 2)
   );
 }
-JavaScript
+
 function loadStats() {
 try {
 return JSON.parse(fs.readFileSync(STATS_FILE, "utf8"));
