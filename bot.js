@@ -41,11 +41,29 @@ function saveProducts(data) {
 // =========================
 
 async function getMattelData() {
-  const response = await fetch(
-    "https://creations.mattel.com/products.json"
-  );
-
-  return await response.json();
+const allProducts = [];
+let page = 1;
+ 
+while (true) {
+const response = await fetch(
+`https://creations.mattel.com/products.json?page=${page}`
+);
+ 
+const data = await response.json();
+ 
+if (!data.products || data.products.length === 0) {
+break;
+}
+ 
+allProducts.push(...data.products);
+console.log(`📄 Loaded page ${page}`);
+ 
+page++;
+}
+ 
+return {
+products: allProducts
+};
 }
 
 // =========================
