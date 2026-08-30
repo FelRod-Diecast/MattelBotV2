@@ -1,0 +1,8 @@
+TODO
+ 
+[ ] New Product Alerts
+[ ] Restock Alerts
+[ ] Sold Out Alerts
+[ ] Daily 7 AM Summary
+[ ] Automatic Scan Every 60 Minutes
+[ ] Stock Command
