@@ -109,19 +109,18 @@ async function scanForNewProducts() {
     const channel = await client.channels.fetch(CHANNEL_ID);
 
     for (const product of products) {
+     
       const inStock =
 product.variants?.some(v => v.available);
  
 const existingProduct =
 savedProducts[product.id];
+      
       if (!savedProducts[product.id]) {
         const price =
           product.variants?.[0]?.price || "Unknown";
 
-        const inStock =
-          product.variants?.some(v => v.available);
-
-        await channel.send(
+                await channel.send(
           "🚨 **NEW HOT WHEELS DETECTED** 🚨\n\n" +
           `📦 ${product.title}\n` +
           `💲 $${price}\n` +
@@ -129,25 +128,63 @@ savedProducts[product.id];
           `🔗 https://creations.mattel.com/products/${product.handle}`
         );
 
-       savedProducts[product.id] = {
+     savedProducts[product.id] = {
 title: product.title,
 handle: product.handle,
 available: inStock,
 detectedAt: new Date().toISOString(),
 lastSeen: new Date().toISOString()
 };
-
-        saveProducts(savedProducts);
-
-        console.log(
-          `🆕 New Product Found: ${product.title}`
-        );
-      }
-    }
-
-    console.log(
-      `⏰ Scan Complete - ${products.length} products checked`
-    );
+ 
+console.log(
+`🆕 New Product Found: ${product.title}`
+);
+}
+else {
+ 
+if (
+existingProduct.available === false &&
+inStock === true
+) {
+ 
+await channel.send(
+`🔥 BACK IN STOCK 🔥\n\n` +
+`📦 ${product.title}\n` +
+`🔗 https://creations.mattel.com/products/${product.handle}`
+);
+ 
+console.log(
+`🔥 Restock Detected: ${product.title}`
+);
+}
+ 
+if (
+existingProduct.available === true &&
+inStock === false
+) {
+ 
+await channel.send(
+`❌ SOLD OUT ❌\n\n` +
+`📦 ${product.title}\n` +
+`🔗 https://creations.mattel.com/products/${product.handle}`
+);
+ 
+console.log(
+`❌ Sold Out: ${product.title}`
+);
+}
+ 
+savedProducts[product.id].available = inStock;
+savedProducts[product.id].lastSeen =
+new Date().toISOString();
+}
+}
+ 
+saveProducts(savedProducts);
+ 
+console.log(
+`⏰ Scan Complete - ${products.length} products checked`
+);
 
   } catch (error) {
     console.error("❌ Scan Failed");
