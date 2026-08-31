@@ -463,16 +463,14 @@ if (message.content === "!latest") {
 }
   // Help
   if (message.content === "!help") {
-    return message.reply(
-      "🤖 Mattel Scanner Commands\n\n" +
-"!status\n" +
-"!stats\n" +
-"!debug\n" +
-"!summary\n" +
-"!latest\n" +
-"!help\n"
-"!scan\n" +
-"!upcoming"
+  return message.reply(
+  "🤖 Mattel Scanner Commands\n\n" +
+  "!status\n" +
+  "!stats\n" +
+  "!debug\n" +
+  "!summary\n" +
+  "!latest\n" +
+  "!help\n" +
     );
   }
 
