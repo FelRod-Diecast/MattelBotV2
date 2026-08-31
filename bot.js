@@ -99,9 +99,20 @@ async function initializeProducts() {
   try {
     const data = await getMattelData();
 
-    const products = data.products.filter(product =>
-      product.title.toLowerCase().includes("hot wheels")
-    );
+   const products = data.products.filter(product => {
+const title = product.title.toLowerCase();
+ 
+return (
+title.includes("hot wheels") &&
+!title.includes("shirt") &&
+!title.includes("hat") &&
+!title.includes("snapback") &&
+!title.includes("tumbler") &&
+!title.includes("sweatshirt") &&
+!title.includes("raglan") &&
+!title.includes("figure")
+);
+});
 
     const savedProducts = loadProducts();
 
