@@ -107,7 +107,7 @@ async function initializeProducts() {
 
     const stats = loadStats();
 
-   if (!savedProducts[product.id]) {
+    if (Object.keys(savedProducts).length === 0) {
       products.forEach(product => {
        const inStock =
 product.variants?.some(v => v.available);
@@ -116,14 +116,9 @@ savedProducts[product.id] = {
 title: product.title,
 handle: product.handle,
 available: inStock,
-price: price,
 detectedAt: new Date().toISOString(),
 lastSeen: new Date().toISOString()
 };
-
-console.log(
-  `💲 Saved Price: ${product.title} - $${price}`
-);
       });
 
       saveProducts(savedProducts);
@@ -169,13 +164,8 @@ const existingProduct =
 savedProducts[product.id];
       
       if (!savedProducts[product.id]) {
-      products.forEach(product => {
-
-const inStock =
-product.variants?.some(v => v.available);
-
-const price =
-  product.variants?.[0]?.price || "Unknown";
+        const price =
+          product.variants?.[0]?.price || "Unknown";
 
                if (!inStock) {
 
