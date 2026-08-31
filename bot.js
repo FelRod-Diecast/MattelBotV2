@@ -427,6 +427,40 @@ if (message.content === "!summary") {
     `❌ Sold Out: ${stats.soldOutToday}`
   );
 }
+  // Latest Products
+if (message.content === "!latest") {
+
+  const savedProducts = loadProducts();
+
+  const latestProducts = Object.values(savedProducts)
+    .sort(
+      (a, b) =>
+        new Date(b.detectedAt) -
+        new Date(a.detectedAt)
+    )
+    .slice(0, 10);
+
+  if (latestProducts.length === 0) {
+    return message.reply(
+      "❌ No products found."
+    );
+  }
+
+  let reply =
+    "📦 Latest 10 Products\n\n";
+
+  latestProducts.forEach(
+    (product, index) => {
+
+      reply +=
+        `${index + 1}. ${product.title}\n`;
+
+    }
+  );
+
+  return message.reply(reply);
+
+}
   // Help
   if (message.content === "!help") {
     return message.reply(
@@ -434,8 +468,9 @@ if (message.content === "!summary") {
 "!status\n" +
 "!stats\n" +
 "!debug\n" +
-"!summary\n" +
-"!help\n" +
+""!summary\n" +
+"!latest\n" +
+"!help\n"
 "!scan\n" +
 "!upcoming"
     );
