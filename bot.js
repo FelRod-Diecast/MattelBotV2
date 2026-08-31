@@ -156,9 +156,24 @@ async function scanForNewProducts() {
   try {
     const data = await getMattelData();
 
-    const products = data.products.filter(product =>
-      product.title.toLowerCase().includes("hot wheels")
-    );
+    const products = data.products.filter(product => {
+  const title = product.title.toLowerCase();
+
+  return (
+    title.includes("hot wheels") &&
+    !title.includes("shirt") &&
+    !title.includes("t-shirt") &&
+    !title.includes("hat") &&
+    !title.includes("dad hat") &&
+    !title.includes("snapback") &&
+    !title.includes("tumbler") &&
+    !title.includes("sweatshirt") &&
+    !title.includes("raglan") &&
+    !title.includes("figure") &&
+    !title.includes("mechanic") &&
+    !title.includes("jersey")
+  );
+});
 
     const savedProducts = loadProducts();
     const stats = loadStats();
@@ -282,7 +297,7 @@ function startScanner() {
 
   setInterval(async () => {
     await scanForNewProducts();
-  }, 15 * 60 * 1000);
+  }, 5 * 60 * 1000);
 }
 
 // =========================
