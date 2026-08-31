@@ -197,6 +197,11 @@ savedProducts[product.id];
       if (!savedProducts[product.id]) {
         const price =
           product.variants?.[0]?.price || "Unknown";
+        console.log(
+  "IMAGE:",
+  product.images?.[0]?.src || "NO IMAGE"
+);
+
 
                if (!inStock) {
 
