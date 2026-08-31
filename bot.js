@@ -468,7 +468,7 @@ if (message.content === "!latest") {
 "!status\n" +
 "!stats\n" +
 "!debug\n" +
-""!summary\n" +
+"!summary\n" +
 "!latest\n" +
 "!help\n"
 "!scan\n" +
