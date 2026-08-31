@@ -190,10 +190,11 @@ savedProducts[product.id];
 
 }
 
-     savedProducts[product.id] = {
+   savedProducts[product.id] = {
 title: product.title,
 handle: product.handle,
 available: inStock,
+price: price,
 detectedAt: new Date().toISOString(),
 lastSeen: new Date().toISOString()
 };
