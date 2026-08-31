@@ -427,7 +427,9 @@ if (message.content === "!summary") {
     return message.reply(
       "🤖 Mattel Scanner Commands\n\n" +
 "!status\n" +
-"!stats\n" +"!debug\n" +
+"!stats\n" +
+"!debug\n" +
+"!summary\n" +
 "!help\n" +
 "!scan\n" +
 "!upcoming"
