@@ -146,6 +146,7 @@ async function scanForNewProducts() {
     );
 
     const savedProducts = loadProducts();
+    const stats = loadStats();
 
     if (!CHANNEL_ID) {
       console.log("⚠️ CHANNEL_ID not configured");
@@ -233,6 +234,7 @@ new Date().toISOString();
 }
  
 saveProducts(savedProducts);
+saveStats(stats);
  
 console.log(
 `⏰ Scan Complete - ${products.length} products checked`
