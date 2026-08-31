@@ -301,7 +301,17 @@ client.on("messageCreate", async message => {
       `✅ Online\n📦 Tracking ${Object.keys(savedProducts).length} products`
     );
   }
+// Stats
+if (message.content === "!stats") {
+  const stats = loadStats();
 
+  return message.reply(
+    "📊 MattelBot Daily Stats\n\n" +
+    `🆕 New Products: ${stats.newProductsToday}\n` +
+    `🔥 Restocks: ${stats.restocksToday}\n` +
+    `❌ Sold Out: ${stats.soldOutToday}`
+  );
+}
   // Help
   if (message.content === "!help") {
     return message.reply(
