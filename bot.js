@@ -357,8 +357,9 @@ client.once("clientReady", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
   await initializeProducts();
-
-  startScanner();
+ 
+startScanner();
+startDailySummary();
 });
 
 // =========================
