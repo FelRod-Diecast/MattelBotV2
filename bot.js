@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const { Client, GatewayIntentBits } = require("discord.js");
 const fs = require("fs");
+const cron = require("node-cron");
 
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
@@ -299,7 +300,55 @@ function startScanner() {
     await scanForNewProducts();
   }, 5 * 60 * 1000);
 }
+function startDailySummary() {
 
+  cron.schedule(
+    "0 8 * * *",
+    async () => {
+
+      try {
+
+        const channel =
+          await client.channels.fetch(CHANNEL_ID);
+
+        const stats = loadStats();
+        const savedProducts = loadProducts();
+
+        await channel.send(
+          "📊 **MattelBot Daily Summary**\n\n" +
+          `📦 Tracking: ${Object.keys(savedProducts).length}\n` +
+          `🆕 New Products: ${stats.newProductsToday}\n` +
+          `🔥 Restocks: ${stats.restocksToday}\n` +
+          `❌ Sold Out: ${stats.soldOutToday}`
+        );
+
+        stats.newProductsToday = 0;
+        stats.restocksToday = 0;
+        stats.soldOutToday = 0;
+
+        saveStats(stats);
+
+        console.log(
+          "📊 Daily summary sent and stats reset"
+        );
+
+      } catch (error) {
+
+        console.error(
+          "❌ Daily summary failed"
+        );
+
+        console.error(error);
+
+      }
+
+    },
+    {
+      timezone: "America/Chicago"
+    }
+  );
+
+}
 // =========================
 // Bot Ready
 // =========================
