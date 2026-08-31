@@ -107,7 +107,7 @@ async function initializeProducts() {
 
     const stats = loadStats();
 
-    if (Object.keys(savedProducts).length === 0) {
+   if (!savedProducts[product.id]) {
       products.forEach(product => {
        const inStock =
 product.variants?.some(v => v.available);
