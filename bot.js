@@ -169,8 +169,13 @@ const existingProduct =
 savedProducts[product.id];
       
       if (!savedProducts[product.id]) {
-        const price =
-          product.variants?.[0]?.price || "Unknown";
+      products.forEach(product => {
+
+const inStock =
+product.variants?.some(v => v.available);
+
+const price =
+  product.variants?.[0]?.price || "Unknown";
 
                if (!inStock) {
 
