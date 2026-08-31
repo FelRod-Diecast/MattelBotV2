@@ -343,12 +343,27 @@ if (message.content === "!stats") {
     `❌ Sold Out: ${stats.soldOutToday}`
   );
 }
+  // Debug
+if (message.content === "!debug") {
+
+  const savedProducts = loadProducts();
+  const stats = loadStats();
+
+  return message.reply(
+    "🛠️ MattelBot Debug\n\n" +
+    `📦 Tracked Products: ${Object.keys(savedProducts).length}\n` +
+    `🆕 New Products Today: ${stats.newProductsToday}\n` +
+    `🔥 Restocks Today: ${stats.restocksToday}\n` +
+    `❌ Sold Out Today: ${stats.soldOutToday}\n` +
+    `📁 Data File: ${DATA_FILE}`
+  );
+}
   // Help
   if (message.content === "!help") {
     return message.reply(
       "🤖 Mattel Scanner Commands\n\n" +
-      "!status\n" +
-"!stats\n" +
+"!status\n" +
+"!stats\n" +"!debug\n" +
 "!help\n" +
 "!scan\n" +
 "!upcoming"
