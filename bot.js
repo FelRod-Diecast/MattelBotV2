@@ -316,11 +316,11 @@ if (message.content === "!stats") {
   if (message.content === "!help") {
     return message.reply(
       "🤖 Mattel Scanner Commands\n\n" +
-      "!ping\n" +
       "!status\n" +
-      "!help\n" +
-      "!scan\n" +
-      "!upcoming"
+"!stats\n" +
+"!help\n" +
+"!scan\n" +
+"!upcoming"
     );
   }
 
