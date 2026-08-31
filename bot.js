@@ -167,13 +167,28 @@ savedProducts[product.id];
         const price =
           product.variants?.[0]?.price || "Unknown";
 
-                await channel.send(
-          "🚨 **NEW HOT WHEELS DETECTED** 🚨\n\n" +
-          `📦 ${product.title}\n` +
-          `💲 $${price}\n` +
-          `${inStock ? "✅ IN STOCK" : "❌ SOLD OUT"}\n` +
-          `🔗 https://creations.mattel.com/products/${product.handle}`
-        );
+               if (!inStock) {
+
+  await channel.send(
+    "🚨 **POSSIBLE HIDDEN PRODUCT DETECTED** 🚨\n\n" +
+    `📦 ${product.title}\n` +
+    `💲 $${price}\n` +
+    `❌ NOT AVAILABLE YET\n` +
+    `👀 First time seen in Mattel API\n` +
+    `🔗 https://creations.mattel.com/products/${product.handle}`
+  );
+
+} else {
+
+  await channel.send(
+    "🚨 **NEW HOT WHEELS DETECTED** 🚨\n\n" +
+    `📦 ${product.title}\n` +
+    `💲 $${price}\n` +
+    `✅ IN STOCK\n` +
+    `🔗 https://creations.mattel.com/products/${product.handle}`
+  );
+
+}
 
      savedProducts[product.id] = {
 title: product.title,
