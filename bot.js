@@ -309,11 +309,30 @@ existingProduct.available === true &&
 inStock === false
 ) {
  
-await channel.send(
-`❌ SOLD OUT ❌\n\n` +
-`📦 ${product.title}\n` +
-`🔗 https://creations.mattel.com/products/${product.handle}`
-);
+const embed = new EmbedBuilder()
+  .setColor(0xff0000)
+  .setTitle("❌ SOLD OUT")
+  .addFields(
+    {
+      name: "📦 Product",
+      value: product.title
+    },
+    {
+      name: "❌ Status",
+      value: "SOLD OUT",
+      inline: true
+    }
+  )
+  .setURL(
+    `https://creations.mattel.com/products/${product.handle}`
+  )
+  .setFooter({
+    text: "MattelBotV2"
+  });
+
+await channel.send({
+  embeds: [embed]
+});
  
 stats.soldOutToday++;
  
