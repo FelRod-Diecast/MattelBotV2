@@ -275,9 +275,30 @@ inStock === true
 ) {
  
 await channel.send(
-`🔥 BACK IN STOCK 🔥\n\n` +
-`📦 ${product.title}\n` +
-`🔗 https://creations.mattel.com/products/${product.handle}`
+const embed = new EmbedBuilder()
+  .setColor(0x0099ff)
+  .setTitle("🔥 BACK IN STOCK")
+  .addFields(
+    {
+      name: "📦 Product",
+      value: product.title
+    },
+    {
+      name: "✅ Status",
+      value: "BACK IN STOCK",
+      inline: true
+    }
+  )
+  .setURL(
+    `https://creations.mattel.com/products/${product.handle}`
+  )
+  .setFooter({
+    text: "MattelBotV2"
+  });
+
+await channel.send({
+  embeds: [embed]
+});
 );
  
 stats.restocksToday++;
