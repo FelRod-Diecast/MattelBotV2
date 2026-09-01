@@ -694,6 +694,23 @@ if (message.content === "!latest") {
   return message.reply(reply);
 
 }
+  // Alerts
+if (message.content === "!alerts") {
+
+  const alerts = loadAlerts();
+
+  if (alerts.length === 0) {
+    return message.reply(
+      "📢 No alerts recorded yet."
+    );
+  }
+
+  return message.reply(
+    "📢 Recent Alerts\n\n" +
+    alerts.join("\n")
+  );
+
+}
   // Help
 if (message.content === "!help") {
   return message.reply(
@@ -703,6 +720,7 @@ if (message.content === "!help") {
     "!debug\n" +
     "!summary\n" +
     "!latest\n" +
+    "!alerts\n" +
    "!testnew\n" +
     "!help\n" +
     "!scan\n" +
