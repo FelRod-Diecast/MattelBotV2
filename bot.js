@@ -250,10 +250,6 @@ await channel.send({
   embeds: [embed]
 });
 
-await channel.send({
-  embeds: [embed]
-});
-
 }
 
    savedProducts[product.id] = {
