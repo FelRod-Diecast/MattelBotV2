@@ -106,8 +106,13 @@ async function getLaunchDate(handle) {
 
     const html = await response.text();
 
-   const match = html.match(
+ const match = html.match(
   /Launches\s+(.*?)&lt;\/div&gt;/i
+);
+
+console.log(
+  "LAUNCH MATCH:",
+  match
 );
 
     if (match) {
