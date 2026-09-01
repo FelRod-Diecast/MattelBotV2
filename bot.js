@@ -197,8 +197,9 @@ async function scanForNewProducts() {
   );
 });
 
-    const savedProducts = loadProducts();
-    const stats = loadStats();
+const savedProducts = loadProducts();
+const stats = loadStats();
+const alerts = loadAlerts();
 
     if (!CHANNEL_ID) {
       console.log("⚠️ CHANNEL_ID not configured");
@@ -304,7 +305,14 @@ price: price,
 detectedAt: new Date().toISOString(),
 lastSeen: new Date().toISOString()
 };
- 
+ alerts.unshift(
+  `🆕 ${product.title}`
+);
+
+alerts.splice(10);
+
+saveAlerts(alerts);
+        
 stats.newProductsToday++;
  
 console.log(
@@ -346,6 +354,14 @@ const embed = new EmbedBuilder()
 await channel.send({
   embeds: [embed]
 });
+alerts.unshift(
+  `🔥 ${product.title}`
+);
+
+alerts.splice(10);
+
+saveAlerts(alerts);
+st
 stats.restocksToday++;
  console.log(
 `🔥 Restock Detected: ${product.title}`
@@ -384,7 +400,13 @@ const embed = new EmbedBuilder()
 await channel.send({
   embeds: [embed]
 });
- 
+alerts.unshift(
+  `❌ ${product.title}`
+);
+
+alerts.splice(10);
+
+saveAlerts(alerts); 
 stats.soldOutToday++;
  
 console.log(
@@ -428,7 +450,14 @@ if (
   .setFooter({
     text: "MattelBotV2"
   });
+alerts.unshift(
+  `💲 ${product.title}`
+);
 
+alerts.splice(10);
+
+saveAlerts(alerts);
+``
 await channel.send({
   embeds: [embed]
 });
