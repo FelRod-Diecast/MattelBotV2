@@ -163,13 +163,16 @@ async function initializeProducts() {
     if (Object.keys(savedProducts).length === 0) {
       products.forEach(product => {
        const inStock =
-product.variants?.some(v => v.available);
- 
+  product.variants?.some(v => v.available);
+
+const price =
+  product.variants?.[0]?.price || "Unknown";
+
 savedProducts[product.id] = {
-title: product.title,
-handle: product.handle,
-available: inStock,
-price: price,
+  title: product.title,
+  handle: product.handle,
+  available: inStock,
+  price: price,
 detectedAt: new Date().toISOString(),
 lastSeen: new Date().toISOString(),
 watchlistAlertSent: false,
