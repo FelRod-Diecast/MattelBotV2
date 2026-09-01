@@ -415,7 +415,7 @@ client.on("messageCreate", async message => {
     const savedProducts = loadProducts();
 
     return message.reply(
-      `✅ Online\n📦 Tracking ${Object.keys(savedProducts).length} products`f
+      `✅ Online\n📦 Tracking ${Object.keys(savedProducts).length} products`
     );
   }
 // Stats
