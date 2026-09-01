@@ -29,6 +29,10 @@ const STATS_FILE = "./stats.json";
 const WATCHLIST = [
   "silverado",
   "tahoe",
+   "c10",
+   "4runner",
+   "blazer",
+   "mustang",
   "ferrari",
   "porsche",
   "boulevard"
@@ -165,12 +169,15 @@ savedProducts[product.id] = {
 title: product.title,
 handle: product.handle,
 available: inStock,
+price: price,
 detectedAt: new Date().toISOString(),
-lastSeen: new Date().toISOString()
+lastSeen: new Date().toISOString(),
+watchlistAlertSent: false,
+hiddenAlertSent: false
 };
       });
 
-      saveProducts(savedProducts);
+saveProducts(savedProducts);
 saveStats(stats);
 
       console.log(
