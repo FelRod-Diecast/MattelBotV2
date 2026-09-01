@@ -291,8 +291,6 @@ const row = new ActionRowBuilder()
 await channel.send({
   embeds: [embed]
 });
-savedProducts[product.id].hiddenAlertSent = true;
-
 
 } else {
 
@@ -330,14 +328,17 @@ await channel.send({
 
 }
 
-   savedProducts[product.id] = {
+savedProducts[product.id] = {
 title: product.title,
 handle: product.handle,
 available: inStock,
 price: price,
 detectedAt: new Date().toISOString(),
-lastSeen: new Date().toISOString()
+lastSeen: new Date().toISOString(),
+watchlistAlertSent: matchedKeyword ? true : false,
+hiddenAlertSent: !inStock
 };
+        
  alerts.unshift(
   `🆕 ${product.title}`
 );
