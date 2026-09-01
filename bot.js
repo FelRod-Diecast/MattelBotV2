@@ -463,23 +463,21 @@ if (message.content === "!embed") {
         inline: true
       }
     )
-.setURL(
-  "https://creations.mattel.com"
-)
-.setFooter({
-  text: "MattelBotV2"
-});
+    .setURL(
+      "https://creations.mattel.com"
+    )
+    .setFooter({
+      text: "MattelBotV2"
+    });
 
   return message.reply({
     embeds: [embed]
   });
 
 }
-
 // Test Daily Summary
 if (message.content === "!summary") {
-  // Test Daily Summary
-if (message.content === "!summary") {
+
   const stats = loadStats();
   const savedProducts = loadProducts();
 
