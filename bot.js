@@ -96,16 +96,7 @@ function saveAlerts(alerts) {
 // =========================
 // Mattel API
 // =========================
-    console.error(
-      "Launch date lookup failed:",
-      handle
-    );
-
-    return null;
-
-  }
-
-}
+   
 async function getMattelData() {
 const allProducts = [];
 let page = 1;
