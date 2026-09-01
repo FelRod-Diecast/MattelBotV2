@@ -754,43 +754,89 @@ if (message.content === "!counts") {
   // Product Search
 if (message.content.startsWith("!product ")) {
 
-  const keyword = message.content
-    .replace("!product ", "")
-    .toLowerCase();
+  try {
 
-  const savedProducts = loadProducts();
+    const keyword = message.content
+      .replace("!product ", "")
+      .toLowerCase();
 
-  const products =
-    Object.values(savedProducts);
+    const data = await getMattelData();
 
-  const matches = products.filter(
-  product =>
-    product.title
-      .toLowerCase()
-      .includes(keyword)
-);
+    const matches = data.products.filter(
+      product =>
+        product.title
+          .toLowerCase()
+          .includes(keyword)
+    );
 
-if (matches.length === 0) {
-  return message.reply(
-    "❌ Product not found."
-  );
-}
+    if (matches.length === 0) {
+      return message.reply(
+        "❌ Product not found."
+      );
+    }
 
-let reply =
-  `🔍 Results for "${keyword}"\n\n`;
+    const product = matches[0];
 
-matches
-  .slice(0, 10)
-  .forEach((product, index) => {
+    const price =
+      product.variants?.[0]?.price ||
+      "Unknown";
 
-    reply +=
-      `${index + 1}. ${product.title}\n` +
-      `💲 ${product.price || "Unknown"}\n` +
-      `✅ ${product.available ? "IN STOCK" : "SOLD OUT"}\n\n`;
+    const inStock =
+      product.variants?.some(
+        v => v.available
+      );
 
-  });
+    const embed = new EmbedBuilder()
+      .setColor(0x0099ff)
+      .setTitle(product.title)
+      .setURL(
+        `https://creations.mattel.com/products/${product.handle}`
+      )
+      .addFields(
+        {
+          name: "💲 Price",
+          value: `$${price}`,
+          inline: true
+        },
+        {
+          name: "📦 Status",
+          value: inStock
+            ? "✅ IN STOCK"
+            : "❌ SOLD OUT",
+          inline: true
+        }
+      )
+      .setThumbnail(
+        product.images?.[0]?.src || null
+      )
+      .setFooter({
+        text: "MattelBotV2"
+      });
 
-return message.reply(reply);
+    const row = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setLabel("🛒 View Product")
+          .setStyle(ButtonStyle.Link)
+          .setURL(
+            `https://creations.mattel.com/products/${product.handle}`
+          )
+      );
+
+    return message.reply({
+      embeds: [embed],
+      components: [row]
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    return message.reply(
+      "❌ Could not reach Mattel."
+    );
+
+  }
 
 }
   // Health
