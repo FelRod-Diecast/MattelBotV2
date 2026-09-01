@@ -621,7 +621,11 @@ if (message.content === "!latest") {
     (product, index) => {
 
       reply +=
-        `${index + 1}. ${product.title}\n`;
+        `#${index + 1}\n` +
+        `📦 ${product.title}\n` +
+        `💲 ${product.price || "Unknown"}\n` +
+        `📅 ${new Date(product.detectedAt).toLocaleDateString()}\n` +
+        `🔗 https://creations.mattel.com/products/${product.handle}\n\n`;
 
     }
   );
