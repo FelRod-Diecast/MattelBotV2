@@ -209,14 +209,36 @@ savedProducts[product.id];
 
                if (!inStock) {
 
-  await channel.send(
-    "🚨 **POSSIBLE HIDDEN PRODUCT DETECTED** 🚨\n\n" +
-    `📦 ${product.title}\n` +
-    `💲 $${price}\n` +
-    `❌ NOT AVAILABLE YET\n` +
-    `👀 First time seen in Mattel API\n` +
-    `🔗 https://creations.mattel.com/products/${product.handle}`
-  );
+ const embed = new EmbedBuilder()
+  .setColor(0xffcc00)
+  .setTitle("🚨 POSSIBLE HIDDEN PRODUCT DETECTED")
+  .addFields(
+    {
+      name: "📦 Product",
+      value: product.title
+    },
+    {
+      name: "💲 Price",
+      value: `$${price}`,
+      inline: true
+    },
+    {
+      name: "👀 Status",
+      value: "NOT AVAILABLE YET",
+      inline: true
+    }
+  )
+  .setURL(
+    `https://creations.mattel.com/products/${product.handle}`
+  )
+  .setFooter({
+    text: "MattelBotV2"
+  });
+
+await channel.send({
+  embeds: [embed]
+});
+
 
 } else {
 
