@@ -96,33 +96,6 @@ function saveAlerts(alerts) {
 // =========================
 // Mattel API
 // =========================
-async function getLaunchDate(handle) {
-
-  try {
-
-    const response = await fetch(
-      `https://creations.mattel.com/products/${handle}`
-    );
-
-    const html = await response.text();
-
- const match = html.match(
-  /Launches\s+(.*?)&lt;\/div&gt;/i
-);
-
-console.log(
-  "COUNTDOWN EXISTS:",
-  html.includes("countdown-message")
-);
-
-    if (match) {
-    return match[1].trim();
-    }
-
-    return null;
-
-  } catch (error) {
-
     console.error(
       "Launch date lookup failed:",
       handle
@@ -1009,10 +982,6 @@ return message.reply({
 
   const price =
     product.variants?.[0]?.price || "Unknown";
-const launchDate =
-  await getLaunchDate(
-    product.handle
-  );
   const embed = new EmbedBuilder()
     .setColor(0xffcc00)
     .setTitle("🚀 UPCOMING PRODUCT")
@@ -1031,11 +1000,6 @@ const launchDate =
   value: "NOT AVAILABLE YET",
   inline: true
 },
-{
-  name: "📅 Launch Date",
-  value: launchDate || "Unknown",
-  inline: false
-}
     )
     .setThumbnail(
       product.images?.[0]?.src || null
