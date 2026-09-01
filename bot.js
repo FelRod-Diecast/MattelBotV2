@@ -111,7 +111,7 @@ async function getLaunchDate(handle) {
 );
 
     if (match) {
-      return match[1];
+    return match[1].trim();
     }
 
     return null;
