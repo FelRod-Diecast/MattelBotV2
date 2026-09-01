@@ -725,6 +725,32 @@ if (message.content === "!alerts") {
   );
 
 }
+  // Counts
+if (message.content === "!counts") {
+
+  const savedProducts = loadProducts();
+
+  const products =
+    Object.values(savedProducts);
+
+  const inStock =
+    products.filter(
+      p => p.available === true
+    ).length;
+
+  const soldOut =
+    products.filter(
+      p => p.available === false
+    ).length;
+
+  return message.reply(
+    "📦 MattelBot Inventory Counts\n\n" +
+    `📦 Total Tracked: ${products.length}\n` +
+    `✅ In Stock: ${inStock}\n` +
+    `❌ Sold Out: ${soldOut}`
+  );
+
+}
   // Health
 if (message.content === "!health") {
 
@@ -752,6 +778,7 @@ if (message.content === "!help") {
     "!summary\n" +
     "!latest\n" +
 "!health\n" +
+"!counts\n" +
 "!alerts\n" +
    "!testnew\n" +
     "!help\n" +
