@@ -492,19 +492,19 @@ if (message.content === "!testnew") {
         inline: true
       }
     )
-    .setURL(
-      "https://creations.mattel.com"
-    )
-    .setFooter({
-      text: "MattelBotV2"
-    });
+   .setURL(
+  "https://creations.mattel.com"
+)
+.setFooter({
+  text: "MattelBotV2"
+});
 
   return message.reply({
     embeds: [embed]
   });
 
 }
-}
+  
 // Test Daily Summary
 if (message.content === "!summary") {
 
