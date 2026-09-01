@@ -279,9 +279,36 @@ console.log(
 );
 }
  
-savedProducts[product.id].available = inStock;
+const currentPrice =
+  product.variants?.[0]?.price || "Unknown";
+
+if (
+  existingProduct.price &&
+  existingProduct.price !== currentPrice
+) {
+
+  await channel.send(
+    `💲 PRICE CHANGE DETECTED 💲\n\n` +
+    `📦 ${product.title}\n` +
+    `💲 Old Price: $${existingProduct.price}\n` +
+    `💲 New Price: $${currentPrice}\n` +
+    `🔗 https://creations.mattel.com/products/${product.handle}`
+  );
+
+  console.log(
+    `💲 Price Changed: ${product.title}`
+  );
+
+}
+
+savedProducts[product.id].price =
+  currentPrice;
+
+savedProducts[product.id].available =
+  inStock;
+
 savedProducts[product.id].lastSeen =
-new Date().toISOString();
+  new Date().toISOString();
 }
 }
  
