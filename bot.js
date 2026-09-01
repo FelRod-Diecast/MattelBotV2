@@ -349,13 +349,35 @@ if (
   existingProduct.price !== currentPrice
 ) {
 
-  await channel.send(
-    `💲 PRICE CHANGE DETECTED 💲\n\n` +
-    `📦 ${product.title}\n` +
-    `💲 Old Price: $${existingProduct.price}\n` +
-    `💲 New Price: $${currentPrice}\n` +
-    `🔗 https://creations.mattel.com/products/${product.handle}`
-  );
+ const embed = new EmbedBuilder()
+  .setColor(0x9932cc)
+  .setTitle("💲 PRICE CHANGE DETECTED")
+  .addFields(
+    {
+      name: "📦 Product",
+      value: product.title
+    },
+    {
+      name: "⬇️ Old Price",
+      value: `$${existingProduct.price}`,
+      inline: true
+    },
+    {
+      name: "⬆️ New Price",
+      value: `$${currentPrice}`,
+      inline: true
+    }
+  )
+  .setURL(
+    `https://creations.mattel.com/products/${product.handle}`
+  )
+  .setFooter({
+    text: "MattelBotV2"
+  });
+
+await channel.send({
+  embeds: [embed]
+});
 
   console.log(
     `💲 Price Changed: ${product.title}`
