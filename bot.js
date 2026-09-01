@@ -336,6 +336,24 @@ alerts.splice(10);
 
 saveAlerts(alerts);
         
+const matchedKeyword =
+  WATCHLIST.find(keyword =>
+    product.title
+      .toLowerCase()
+      .includes(keyword)
+  );
+
+if (matchedKeyword) {
+
+  await channel.send(
+    `🚨 WATCHLIST MATCH 🚨\n\n` +
+    `📦 ${product.title}\n` +
+    `🔑 Keyword: ${matchedKeyword}\n` +
+    `🔗 https://creations.mattel.com/products/${product.handle}`
+  );
+
+}
+        
 stats.newProductsToday++;
  
 console.log(
