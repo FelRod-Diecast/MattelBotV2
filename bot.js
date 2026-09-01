@@ -220,13 +220,35 @@ savedProducts[product.id];
 
 } else {
 
-  await channel.send(
-    "🚨 **NEW HOT WHEELS DETECTED** 🚨\n\n" +
-    `📦 ${product.title}\n` +
-    `💲 $${price}\n` +
-    `✅ IN STOCK\n` +
-    `🔗 https://creations.mattel.com/products/${product.handle}`
-  );
+const embed = new EmbedBuilder()
+  .setColor(0x00ff00)
+  .setTitle("🚨 NEW HOT WHEELS DETECTED")
+  .addFields(
+    {
+      name: "📦 Product",
+      value: product.title
+    },
+    {
+      name: "💲 Price",
+      value: `$${price}`,
+      inline: true
+    },
+    {
+      name: "✅ Status",
+      value: "IN STOCK",
+      inline: true
+    }
+  )
+  .setURL(
+    `https://creations.mattel.com/products/${product.handle}`
+  )
+  .setFooter({
+    text: "MattelBotV2"
+  });
+
+await channel.send({
+  embeds: [embed]
+});
 
 }
 
