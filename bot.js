@@ -22,6 +22,7 @@ const client = new Client({
 const DATA_FILE = "./scanData.json";
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const STATS_FILE = "./stats.json";
+const ALERTS_FILE = "./alerts.json";
 
 // =========================
 // Product Storage
@@ -59,6 +60,22 @@ fs.writeFileSync(
 STATS_FILE,
 JSON.stringify(stats, null, 2)
 );
+}
+function loadAlerts() {
+  try {
+    return JSON.parse(
+      fs.readFileSync(ALERTS_FILE, "utf8")
+    );
+  } catch {
+    return [];
+  }
+}
+
+function saveAlerts(alerts) {
+  fs.writeFileSync(
+    ALERTS_FILE,
+    JSON.stringify(alerts, null, 2)
+  );
 }
 // =========================
 // Mattel API
