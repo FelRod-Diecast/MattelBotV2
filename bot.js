@@ -273,8 +273,7 @@ if (
 existingProduct.available === false &&
 inStock === true
 ) {
- 
-await channel.send(
+
 const embed = new EmbedBuilder()
   .setColor(0x0099ff)
   .setTitle("🔥 BACK IN STOCK")
@@ -295,6 +294,10 @@ const embed = new EmbedBuilder()
   .setFooter({
     text: "MattelBotV2"
   });
+
+await channel.send({
+  embeds: [embed]
+});
 
 await channel.send({
   embeds: [embed]
