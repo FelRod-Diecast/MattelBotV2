@@ -776,6 +776,10 @@ if (message.content.startsWith("!product ")) {
     }
 
     const product = matches[0];
+    console.log(
+  "PRODUCT IMAGE:",
+  product.images?.[0]?.src
+);
 
     const price =
       product.variants?.[0]?.price ||
