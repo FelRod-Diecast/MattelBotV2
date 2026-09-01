@@ -415,7 +415,7 @@ client.on("messageCreate", async message => {
     const savedProducts = loadProducts();
 
     return message.reply(
-      `✅ Online\n📦 Tracking ${Object.keys(savedProducts).length} products`
+      `✅ Online\n📦 Tracking ${Object.keys(savedProducts).length} products`f
     );
   }
 // Stats
@@ -463,10 +463,12 @@ if (message.content === "!embed") {
         inline: true
       }
     )
-    .setURL("https://creations.mattel.com")
-    .setFooter({
-      text: "MattelBotV2"
-    });
+.setURL(
+  "https://creations.mattel.com"
+)
+.setFooter({
+  text: "MattelBotV2"
+});
 
   return message.reply({
     embeds: [embed]
