@@ -111,8 +111,8 @@ async function getLaunchDate(handle) {
 );
 
 console.log(
-  "LAUNCH MATCH:",
-  match
+  "COUNTDOWN EXISTS:",
+  html.includes("countdown-message")
 );
 
     if (match) {
