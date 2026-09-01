@@ -228,8 +228,11 @@ savedProducts[product.id];
       inline: true
     }
   )
-  .setURL(
-    `https://creations.mattel.com/products/${product.handle}`
+.setURL(
+  `https://creations.mattel.com/products/${product.handle}`
+)
+  .setThumbnail(
+    product.images?.[0]?.src || null
   )
   .setFooter({
     text: "MattelBotV2"
@@ -261,13 +264,15 @@ const embed = new EmbedBuilder()
       inline: true
     }
   )
-  .setURL(
-    `https://creations.mattel.com/products/${product.handle}`
+ .setURL(
+  `https://creations.mattel.com/products/${product.handle}`
+)
+  .setThumbnail(
+    product.images?.[0]?.src || null
   )
   .setFooter({
     text: "MattelBotV2"
   });
-
 await channel.send({
   embeds: [embed]
 });
@@ -310,12 +315,16 @@ const embed = new EmbedBuilder()
       inline: true
     }
   )
-  .setURL(
-    `https://creations.mattel.com/products/${product.handle}`
+.setURL(
+  `https://creations.mattel.com/products/${product.handle}`
+)
+  .setThumbnail(
+    product.images?.[0]?.src || null
   )
   .setFooter({
     text: "MattelBotV2"
   });
+``
 
 await channel.send({
   embeds: [embed]
@@ -345,8 +354,11 @@ const embed = new EmbedBuilder()
       inline: true
     }
   )
-  .setURL(
-    `https://creations.mattel.com/products/${product.handle}`
+ .setURL(
+  `https://creations.mattel.com/products/${product.handle}`
+)
+  .setThumbnail(
+    product.images?.[0]?.src || null
   )
   .setFooter({
     text: "MattelBotV2"
@@ -390,8 +402,11 @@ if (
       inline: true
     }
   )
-  .setURL(
-    `https://creations.mattel.com/products/${product.handle}`
+ .setURL(
+  `https://creations.mattel.com/products/${product.handle}`
+)
+  .setThumbnail(
+    product.images?.[0]?.src || null
   )
   .setFooter({
     text: "MattelBotV2"
