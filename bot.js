@@ -725,6 +725,23 @@ if (message.content === "!alerts") {
   );
 
 }
+  // Health
+if (message.content === "!health") {
+
+  const savedProducts = loadProducts();
+  const stats = loadStats();
+
+  return message.reply(
+    "🤖 MattelBot Health\n\n" +
+    "✅ Online\n" +
+    `📦 Tracking: ${Object.keys(savedProducts).length}\n` +
+    `🆕 New Today: ${stats.newProductsToday}\n` +
+    `🔥 Restocks Today: ${stats.restocksToday}\n` +
+    `❌ Sold Out Today: ${stats.soldOutToday}\n` +
+    `⏰ Checked: ${new Date().toLocaleString()}`
+  );
+
+}
   // Help
 if (message.content === "!help") {
   return message.reply(
