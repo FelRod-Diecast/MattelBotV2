@@ -3,7 +3,10 @@ require("dotenv").config();
 const {
 Client,
 GatewayIntentBits,
-EmbedBuilder
+EmbedBuilder,
+ActionRowBuilder,
+ButtonBuilder,
+ButtonStyle
 } = require("discord.js");
 const fs = require("fs");
 const cron = require("node-cron");
@@ -256,8 +259,19 @@ savedProducts[product.id];
     text: "MattelBotV2"
   });
 
+const row = new ActionRowBuilder()
+  .addComponents(
+    new ButtonBuilder()
+      .setLabel("🛒 View Product")
+      .setStyle(ButtonStyle.Link)
+      .setURL(
+        `https://creations.mattel.com/products/${product.handle}`
+      )
+  );
+
 await channel.send({
-  embeds: [embed]
+  embeds: [embed],
+  components: [row]
 });
 
 
