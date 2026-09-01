@@ -298,10 +298,8 @@ const embed = new EmbedBuilder()
 await channel.send({
   embeds: [embed]
 });
- 
 stats.restocksToday++;
- 
-console.log(
+ console.log(
 `🔥 Restock Detected: ${product.title}`
 );
 }
