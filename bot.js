@@ -1,6 +1,10 @@
 require("dotenv").config();
 
-const { Client, GatewayIntentBits } = require("discord.js");
+const {
+Client,
+GatewayIntentBits,
+EmbedBuilder
+} = require("discord.js");
 const fs = require("fs");
 const cron = require("node-cron");
 
@@ -442,6 +446,39 @@ if (message.content === "!debug") {
 }
   // Test Daily Summary
 if (message.content === "!summary") {
+  // Test Embed
+if (message.content === "!embed") {
+
+  const embed = new EmbedBuilder()
+    .setColor(0xff0000)
+    .setTitle("🚗 MattelBot Embed Test")
+    .setDescription(
+      "Embeds are working."
+    )
+    .addFields(
+      {
+        name: "Price",
+        value: "$24.99",
+        inline: true
+      },
+      {
+        name: "Status",
+        value: "✅ In Stock",
+        inline: true
+      }
+    )
+    .setURL(
+      "https://creations.mattel.com"
+    )
+    .setFooter({
+      text: "MattelBotV2"
+    });
+
+  return message.reply({
+    embeds: [embed]
+  });
+
+}
 
   const stats = loadStats();
   const savedProducts = loadProducts();
@@ -497,6 +534,7 @@ if (message.content === "!help") {
     "!debug\n" +
     "!summary\n" +
     "!latest\n" +
+    "!embed\n" +
     "!help\n" +
     "!scan\n" +
     "!upcoming"
