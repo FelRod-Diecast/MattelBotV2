@@ -444,17 +444,13 @@ if (message.content === "!debug") {
     `📁 Data File: ${DATA_FILE}`
   );
 }
-  // Test Daily Summary
-if (message.content === "!summary") {
-  // Test Embed
+// Test Embed
 if (message.content === "!embed") {
 
   const embed = new EmbedBuilder()
     .setColor(0xff0000)
     .setTitle("🚗 MattelBot Embed Test")
-    .setDescription(
-      "Embeds are working."
-    )
+    .setDescription("Embeds are working.")
     .addFields(
       {
         name: "Price",
@@ -467,9 +463,7 @@ if (message.content === "!embed") {
         inline: true
       }
     )
-    .setURL(
-      "https://creations.mattel.com"
-    )
+    .setURL("https://creations.mattel.com")
     .setFooter({
       text: "MattelBotV2"
     });
@@ -480,6 +474,10 @@ if (message.content === "!embed") {
 
 }
 
+// Test Daily Summary
+if (message.content === "!summary") {
+  // Test Daily Summary
+if (message.content === "!summary") {
   const stats = loadStats();
   const savedProducts = loadProducts();
 
