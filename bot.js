@@ -562,7 +562,7 @@ if (message.content === "!help") {
     "!debug\n" +
     "!summary\n" +
     "!latest\n" +
-    "!embed\n" +
+   "!testnew\n" +
     "!help\n" +
     "!scan\n" +
     "!upcoming"
