@@ -869,7 +869,17 @@ if (message.content === "!help") {
           `🔗 https://creations.mattel.com/products/${product.handle}\n\n`;
       });
 
-      return message.reply(reply);
+      return messconst embed = new EmbedBuilder()
+  .setColor(0x0099ff)
+  .setTitle(`🔍 Results for "${keyword}"`)
+  .setDescription(reply)
+  .setFooter({
+    text: "MattelBotV2"
+  });
+
+return message.reply({
+  embeds: [embed]
+});age.reply(reply);
 
     } catch (error) {
       console.error(error);
