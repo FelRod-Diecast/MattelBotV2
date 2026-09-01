@@ -969,20 +969,55 @@ return message.reply({
         return !available;
       });
 
-      let reply =
-        "🚀 Upcoming / Not Available Yet\n\n";
+     for (const product of products.slice(0, 5)) {
 
-      products.slice(0, 5).forEach(product => {
-        const price =
-          product.variants?.[0]?.price || "Unknown";
+  const price =
+    product.variants?.[0]?.price || "Unknown";
 
-        reply +=
-          `📦 ${product.title}\n` +
-          `💲 $${price}\n` +
-          `🔗 https://creations.mattel.com/products/${product.handle}\n\n`;
-      });
+  const embed = new EmbedBuilder()
+    .setColor(0xffcc00)
+    .setTitle("🚀 UPCOMING PRODUCT")
+    .addFields(
+      {
+        name: "📦 Product",
+        value: product.title
+      },
+      {
+        name: "💲 Price",
+        value: `$${price}`,
+        inline: true
+      },
+      {
+        name: "👀 Status",
+        value: "NOT AVAILABLE YET",
+        inline: true
+      }
+    )
+    .setThumbnail(
+      product.images?.[0]?.src || null
+    )
+    .setFooter({
+      text: "MattelBotV2"
+    });
 
-      return message.reply(reply);
+  const row = new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setLabel("🛒 View Product")
+        .setStyle(ButtonStyle.Link)
+        .setURL(
+          `https://creations.mattel.com/products/${product.handle}`
+        )
+    );
+
+  await message.channel.send({
+    embeds: [embed],
+    components: [row]
+  });
+
+}
+
+return;
 
     } catch (error) {
       console.error(error);
