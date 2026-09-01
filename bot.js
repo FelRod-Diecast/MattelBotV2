@@ -775,35 +775,40 @@ if (message.content.startsWith("!product ")) {
       );
     }
 
-   let reply =
-  `🔍 Found ${matches.length} matching products\n\n`;
+const inStockProducts = matches.filter(
+  product =>
+    product.variants?.some(
+      v => v.available
+    )
+);
 
-matches
-  .slice(0, 10)
+if (inStockProducts.length === 0) {
+  return message.reply(
+    `❌ No in-stock products found for "${keyword}".`
+  );
+}
+
+let reply =
+  `🟢 In Stock Results for "${keyword}"\n\n`;
+
+inStockProducts
+  .slice(0, 5)
   .forEach((product, index) => {
 
     const price =
       product.variants?.[0]?.price ||
       "Unknown";
 
-    const inStock =
-      product.variants?.some(
-        v => v.available
-      );
-
     reply +=
       `${index + 1}. ${product.title}\n` +
       `💲 $${price}\n` +
-      `📦 ${inStock ? "IN STOCK" : "SOLD OUT"}\n\n`;
+      `🔗 https://creations.mattel.com/products/${product.handle}\n\n`;
 
   });
 
 return message.reply(reply);
-    console.log(
-  "PRODUCT IMAGE:",
-  product.images?.[0]?.src
-);
 
+ 
   } catch (error) {
 
     console.error(error);
