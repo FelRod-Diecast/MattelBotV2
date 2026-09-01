@@ -751,6 +751,39 @@ if (message.content === "!counts") {
   );
 
 }
+  // Product Search
+if (message.content.startsWith("!product ")) {
+
+  const keyword = message.content
+    .replace("!product ", "")
+    .toLowerCase();
+
+  const savedProducts = loadProducts();
+
+  const products =
+    Object.values(savedProducts);
+
+  const match = products.find(
+    product =>
+      product.title
+        .toLowerCase()
+        .includes(keyword)
+  );
+
+  if (!match) {
+    return message.reply(
+      "❌ Product not found."
+    );
+  }
+
+  return message.reply(
+    `📦 ${match.title}\n` +
+    `💲 ${match.price || "Unknown"}\n` +
+    `✅ ${match.available ? "IN STOCK" : "SOLD OUT"}\n` +
+    `🔗 https://creations.mattel.com/products/${match.handle}`
+  );
+
+}
   // Health
 if (message.content === "!health") {
 
@@ -773,17 +806,18 @@ if (message.content === "!help") {
   return message.reply(
     "🤖 Mattel Scanner Commands\n\n" +
     "!status\n" +
-    "!stats\n" +
-    "!debug\n" +
-    "!summary\n" +
-    "!latest\n" +
+"!stats\n" +
+"!debug\n" +
+"!summary\n" +
+"!latest\n" +
 "!health\n" +
 "!counts\n" +
+"!product keyword\n" +
 "!alerts\n" +
-   "!testnew\n" +
-    "!help\n" +
-    "!scan\n" +
-    "!upcoming"
+"!testnew\n" +
+"!help\n" +
+"!scan\n" +
+"!upcoming"
   );
 }
   // Scan
