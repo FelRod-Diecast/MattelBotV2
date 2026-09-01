@@ -244,7 +244,10 @@ savedProducts[product.id];
 );
 
 
-               if (!inStock) {
+              if (
+  !inStock &&
+  !savedProducts[product.id]?.hiddenAlertSent
+) {
 
  const embed = new EmbedBuilder()
   .setColor(0xffcc00)
@@ -286,9 +289,9 @@ const row = new ActionRowBuilder()
   );
 
 await channel.send({
-  embeds: [embed],
-  components: [row]
+  embeds: [embed]
 });
+savedProducts[product.id].hiddenAlertSent = true;
 
 
 } else {
