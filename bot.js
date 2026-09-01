@@ -25,6 +25,15 @@ const client = new Client({
 const DATA_FILE = "./scanData.json";
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const STATS_FILE = "./stats.json";
+
+const WATCHLIST = [
+  "silverado",
+  "tahoe",
+  "ferrari",
+  "porsche",
+  "boulevard"
+];
+
 const ALERTS_FILE = "./alerts.json";
 
 // =========================
