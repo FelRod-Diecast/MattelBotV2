@@ -775,11 +775,12 @@ if (message.content.startsWith("!product ")) {
       );
     }
 
-    const product = matches[0];
-    console.log(
-  "PRODUCT IMAGE:",
-  product.images?.[0]?.src
-);
+   let reply =
+  `🔍 Found ${matches.length} matching products\n\n`;
+
+matches
+  .slice(0, 10)
+  .forEach((product, index) => {
 
     const price =
       product.variants?.[0]?.price ||
@@ -790,47 +791,18 @@ if (message.content.startsWith("!product ")) {
         v => v.available
       );
 
-    const embed = new EmbedBuilder()
-      .setColor(0x0099ff)
-      .setTitle(product.title)
-      .setURL(
-        `https://creations.mattel.com/products/${product.handle}`
-      )
-      .addFields(
-        {
-          name: "💲 Price",
-          value: `$${price}`,
-          inline: true
-        },
-        {
-          name: "📦 Status",
-          value: inStock
-            ? "✅ IN STOCK"
-            : "❌ SOLD OUT",
-          inline: true
-        }
-      )
-      .setThumbnail(
-        product.images?.[0]?.src || null
-      )
-      .setFooter({
-        text: "MattelBotV2"
-      });
+    reply +=
+      `${index + 1}. ${product.title}\n` +
+      `💲 $${price}\n` +
+      `📦 ${inStock ? "IN STOCK" : "SOLD OUT"}\n\n`;
 
-    const row = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setLabel("🛒 View Product")
-          .setStyle(ButtonStyle.Link)
-          .setURL(
-            `https://creations.mattel.com/products/${product.handle}`
-          )
-      );
+  });
 
-    return message.reply({
-      embeds: [embed],
-      components: [row]
-    });
+return message.reply(reply);
+    console.log(
+  "PRODUCT IMAGE:",
+  product.images?.[0]?.src
+);
 
   } catch (error) {
 
