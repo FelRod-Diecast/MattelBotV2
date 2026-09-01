@@ -106,9 +106,9 @@ async function getLaunchDate(handle) {
 
     const html = await response.text();
 
-    const match = html.match(
-      /Launches\s+([A-Za-z]+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}\s+[ap]m\s+PT)/i
-    );
+   const match = html.match(
+  /Launches\s+(.*?)&lt;\/div&gt;/i
+);
 
     if (match) {
       return match[1];
