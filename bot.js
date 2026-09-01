@@ -470,22 +470,25 @@ if (message.content === "!debug") {
     `📁 Data File: ${DATA_FILE}`
   );
 }
-// Test Embed
-if (message.content === "!embed") {
+// Test New Product Alert
+if (message.content === "!testnew") {
 
   const embed = new EmbedBuilder()
-    .setColor(0xff0000)
-    .setTitle("🚗 MattelBot Embed Test")
-    .setDescription("Embeds are working.")
+    .setColor(0x00ff00)
+    .setTitle("🚨 NEW HOT WHEELS DETECTED")
     .addFields(
       {
-        name: "Price",
+        name: "📦 Product",
+        value: "RLC Test Skyline"
+      },
+      {
+        name: "💲 Price",
         value: "$24.99",
         inline: true
       },
       {
-        name: "Status",
-        value: "✅ In Stock",
+        name: "✅ Status",
+        value: "IN STOCK",
         inline: true
       }
     )
@@ -500,6 +503,7 @@ if (message.content === "!embed") {
     embeds: [embed]
   });
 
+}
 }
 // Test Daily Summary
 if (message.content === "!summary") {
