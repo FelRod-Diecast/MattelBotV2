@@ -763,25 +763,34 @@ if (message.content.startsWith("!product ")) {
   const products =
     Object.values(savedProducts);
 
-  const match = products.find(
-    product =>
-      product.title
-        .toLowerCase()
-        .includes(keyword)
-  );
+  const matches = products.filter(
+  product =>
+    product.title
+      .toLowerCase()
+      .includes(keyword)
+);
 
-  if (!match) {
-    return message.reply(
-      "❌ Product not found."
-    );
-  }
-
+if (matches.length === 0) {
   return message.reply(
-    `📦 ${match.title}\n` +
-    `💲 ${match.price || "Unknown"}\n` +
-    `✅ ${match.available ? "IN STOCK" : "SOLD OUT"}\n` +
-    `🔗 https://creations.mattel.com/products/${match.handle}`
+    "❌ Product not found."
   );
+}
+
+let reply =
+  `🔍 Results for "${keyword}"\n\n`;
+
+matches
+  .slice(0, 10)
+  .forEach((product, index) => {
+
+    reply +=
+      `${index + 1}. ${product.title}\n` +
+      `💲 ${product.price || "Unknown"}\n` +
+      `✅ ${product.available ? "IN STOCK" : "SOLD OUT"}\n\n`;
+
+  });
+
+return message.reply(reply);
 
 }
   // Health
