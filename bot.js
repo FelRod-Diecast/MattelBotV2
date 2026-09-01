@@ -869,7 +869,7 @@ if (message.content === "!help") {
           `🔗 https://creations.mattel.com/products/${product.handle}\n\n`;
       });
 
-      return messconst embed = new EmbedBuilder()
+    const embed = new EmbedBuilder()
   .setColor(0x0099ff)
   .setTitle(`🔍 Results for "${keyword}"`)
   .setDescription(reply)
@@ -879,7 +879,7 @@ if (message.content === "!help") {
 
 return message.reply({
   embeds: [embed]
-});age.reply(reply);
+});
 
     } catch (error) {
       console.error(error);
