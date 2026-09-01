@@ -563,3 +563,4 @@ process.on("uncaughtException", error => {
 // =========================
 
 client.login(process.env.DISCORD_TOKEN);
+// Stable Backup
