@@ -958,6 +958,23 @@ return message.reply(reply);
   );
 
 }
+if (message.content.startsWith("!predict ")) {
+
+  // predict code
+
+}
+
+if (message.content.startsWith("!launch ")) {
+
+  // launch code
+
+}
+
+if (message.content.startsWith("!watch ")) {
+
+  // watch code
+
+}
   if (message.content.startsWith("!watch ")) {
 
   const keyword = message.content
