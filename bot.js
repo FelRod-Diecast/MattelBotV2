@@ -993,15 +993,15 @@ if (message.content.startsWith("!launch ")) {
     const html =
       await response.text();
 
-    const launchMatch =
-      html.match(
-        /Launches\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}\s+[ap]m\s+PT/i
-      );
+ const launchMatch =
+  html.match(
+    /Launches\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}\s+[ap]m\s+PT/i
+  );
 
-    const shipMatch =
-      html.match(
-        /Ships on or before\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}/i
-      );
+const shipMatch =
+  html.match(
+    /Ships on or before\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}/i
+  );
 
     let reply =
       `🚀 Launch Information\n\n${match.title}\n\n`;
