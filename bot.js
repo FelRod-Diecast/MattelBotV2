@@ -958,8 +958,7 @@ return message.reply(reply);
   );
 
 }
-  if (message.content === "!watchlist") {
-if (message.content.startsWith("!watch ")) {
+  if (message.content.startsWith("!watch ")) {
 
   const keyword = message.content
     .replace("!watch ", "")
@@ -985,7 +984,9 @@ if (message.content.startsWith("!watch ")) {
     `✅ Added "${keyword}" to watchlist.`
   );
 
-}    
+}
+
+if (message.content === "!watchlist") {
 
   const watchlist = loadWatchlist();
 
