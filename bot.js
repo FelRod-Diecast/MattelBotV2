@@ -369,6 +369,10 @@ if (matchedKeyword) {
 }
         
 stats.newProductsToday++;
+console.log(
+  "NEW COUNT:",
+  stats.newProductsToday
+);        
  
 console.log(
 `🆕 New Product Found: ${product.title}`
@@ -424,6 +428,10 @@ alerts.splice(10);
 
 saveAlerts(alerts);
 stats.restocksToday++;
+console.log(
+  "RESTOCK COUNT:",
+  stats.restocksToday
+);  
  console.log(
 `🔥 Restock Detected: ${product.title}`
 );
@@ -469,6 +477,10 @@ alerts.splice(10);
 
 saveAlerts(alerts); 
 stats.soldOutToday++;
+console.log(
+  "SOLDOUT COUNT:",
+  stats.soldOutToday
+);  
  
 console.log(
 `❌ Sold Out: ${product.title}`
