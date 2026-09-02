@@ -1204,17 +1204,21 @@ if (message.content === "!watchout") {
 
     if (!match) continue;
 
-    if (match.available === true) {
-      inStock++;
+   if (match.available === true) {
 
-      reply +=
-        `✅ ${match.title}\n`;
-    } else {
-      soldOut++;
+  inStock++;
 
-      reply +=
-        `❌ ${match.title}\n`;
-    }
+  reply +=
+    `✅ ${match.title}\n`;
+
+} else {
+
+  soldOut++;
+
+  reply +=
+    `❌ ${match.title}\n`;
+
+}
 
     restocks +=
       match.stats?.restockEvents || 0;
