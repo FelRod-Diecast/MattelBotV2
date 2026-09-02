@@ -958,21 +958,37 @@ return message.reply(reply);
   );
 
 }
-if (message.content.startsWith("!predict ")) {
-
-  // predict code
-
-}
-
 if (message.content.startsWith("!launch ")) {
 
-  // launch code
+  const keyword = message.content
+    .replace("!launch ", "")
+    .toLowerCase();
 
-}
+  const products = loadProducts();
 
-if (message.content.startsWith("!watch ")) {
+  const match =
+    Object.values(products)
+      .find(product =>
+        product.title
+          .toLowerCase()
+          .includes(keyword)
+      );
 
-  // watch code
+  if (!match) {
+
+    return message.reply(
+      "❌ Product not found."
+    );
+
+  }
+
+  return message.reply(
+
+    "🚀 Launch Information\n\n" +
+    `${match.title}\n\n` +
+    `🔗 https://creations.mattel.com/products/${match.handle}`
+
+  );
 
 }
   if (message.content.startsWith("!watch ")) {
