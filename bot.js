@@ -1014,9 +1014,7 @@ if (message.content.startsWith("!unwatch ")) {
   );
 
 }
-if (message.content === "!watchlist") {
-  
-  if (message.content === "!watchstats") {
+if (message.content === "!watchstats") {
 
   const watchlist = loadWatchlist();
 
@@ -1047,6 +1045,8 @@ if (message.content === "!watchlist") {
   return message.reply(reply);
 
 }
+
+if (message.content === "!watchlist") {
 
   const watchlist = loadWatchlist();
 
