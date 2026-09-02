@@ -1053,6 +1053,9 @@ if (message.content === "!watchstock") {
   const products =
     Object.values(loadProducts());
 
+  let inStock = 0;
+  let soldOut = 0;
+
   let reply =
     "⭐ Watchlist Stock Status\n\n";
 
@@ -1067,15 +1070,26 @@ if (message.content === "!watchstock") {
 
     if (!match) continue;
 
-   const status =
-  match.available === true
-    ? "✅ IN STOCK"
-    : "❌ SOLD OUT";
+    const status =
+      match.available === true
+        ? "✅ IN STOCK"
+        : "❌ SOLD OUT";
 
-reply +=
-  `${status}\n` +
-  `${match.title}\n\n`;
+    if (match.available === true) {
+      inStock++;
+    } else {
+      soldOut++;
+    }
+
+    reply +=
+      `${status}\n` +
+      `${match.title}\n\n`;
+
   }
+
+  reply +=
+    `📊 In Stock: ${inStock}\n` +
+    `📊 Sold Out: ${soldOut}`;
 
   return message.reply(reply);
 
