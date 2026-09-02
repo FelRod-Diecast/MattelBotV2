@@ -1119,6 +1119,46 @@ reply +=
 return message.reply(reply);
 
 }
+if (message.content === "!watchout") {
+
+  const watchlist = loadWatchlist();
+
+  const products =
+    Object.values(loadProducts());
+
+  let count = 0;
+
+  let reply =
+    "⭐ Watchlist Sold Out\n\n";
+
+  for (const keyword of watchlist) {
+
+    const match =
+      products.find(product =>
+        product.title
+          .toLowerCase()
+          .includes(keyword)
+      );
+
+    if (!match) continue;
+
+    if (match.available === true)
+      continue;
+
+    count++;
+
+    reply +=
+      `❌ ${match.title}\n\n`;
+
+  }
+
+  reply +=
+    `\n📊 Total Sold Out: ${count}`;
+
+  return message.reply(reply);
+
+}
+  
 if (message.content === "!watchlist") {
 
    const watchlist = loadWatchlist();
