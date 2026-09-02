@@ -1024,6 +1024,42 @@ if (message.content === "!watchlist") {
   );
 
 }
+  if (message.content === "!hot") {
+
+  const products =
+    Object.values(loadProducts());
+
+  const ranked = products
+    .filter(p => p.stats)
+    .map(p => ({
+      title: p.title,
+      score:
+        (p.stats.restockEvents || 0) +
+        (p.stats.soldOutEvents || 0)
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+
+  if (ranked.length === 0) {
+    return message.reply(
+      "❌ No activity data yet."
+    );
+  }
+
+  let reply =
+    "🏆 Most Active Products\n\n";
+
+  ranked.forEach((item, index) => {
+
+    reply +=
+      `${index + 1}. ${item.title}\n` +
+      `📊 Activity Score: ${item.score}\n\n`;
+
+  });
+
+  return message.reply(reply);
+
+}
   // Health
 if (message.content === "!health") {
 
