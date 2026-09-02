@@ -1240,14 +1240,14 @@ return message.reply({
     });
 
   const row = new ActionRowBuilder()
-    .addComponents(
-      new ButtonBuilder()
-        .setLabel("🛒 View Product")
-        .setStyle(ButtonStyle.Link)
-        .setURL(
-          `https://creations.mattel.com/products/${product.handle}`
-        )
-    );
+.addComponents(
+new ButtonBuilder()
+.setLabel("🛒 View Product")
+.setStyle(ButtonStyle.Link)
+.setURL(
+`https://creations.mattel.com/products/${product.handle}`
+)
+);
 
   await message.channel.send({
     embeds: [embed],
