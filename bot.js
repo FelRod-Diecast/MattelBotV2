@@ -906,6 +906,42 @@ return message.reply(reply);
   }
 
 }
+  if (message.content.startsWith("!predict ")) {
+
+  const keyword = message.content
+    .replace("!predict ", "")
+    .toLowerCase();
+
+  const products = loadProducts();
+
+  const match =
+    Object.values(products)
+    .find(product =>
+      product.title
+        .toLowerCase()
+        .includes(keyword)
+    );
+
+  if (!match) {
+    return message.reply(
+      "❌ Product not found."
+    );
+  }
+
+  if (
+    !match.stats ||
+    match.stats.restockTimestamps.length < 2
+  ) {
+    return message.reply(
+      "❌ Not enough history yet."
+    );
+  }
+
+  return message.reply(
+    `📦 ${match.title}`
+  );
+
+}
   // Health
 if (message.content === "!health") {
 
