@@ -1068,22 +1068,27 @@ if (message.content === "!watchstock") {
           .includes(keyword)
       );
 
-    if (!match) continue;
-
-    const status =
-      match.available === true
-        ? "✅ IN STOCK"
-        : "❌ SOLD OUT";
-
-    if (match.available === true) {
-      inStock++;
-    } else {
-      soldOut++;
+    if (!match) {
+      continue;
     }
 
-    reply +=
-      `${status}\n` +
-      `${match.title}\n\n`;
+    if (match.available === true) {
+
+      inStock++;
+
+      reply +=
+        `✅ IN STOCK\n` +
+        `${match.title}\n\n`;
+
+    } else {
+
+      soldOut++;
+
+      reply +=
+        `❌ SOLD OUT\n` +
+        `${match.title}\n\n`;
+
+    }
 
   }
 
