@@ -1012,10 +1012,24 @@ console.log(
     /Launches\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}\s+[ap]m\s+PT/i
   );
 
-const shipMatch =
-  html.match(
-    /Ships on or before\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}/i
+cconst shipIndex =
+  html.indexOf("Ships on or before");
+
+console.log(
+  "SHIP INDEX:",
+  shipIndex
+);
+
+if (shipIndex > -1) {
+
+  console.log(
+    html.substring(
+      shipIndex,
+      shipIndex + 100
+    )
   );
+
+}
 
     let reply =
       `🚀 Launch Information\n\n${match.title}\n\n`;
