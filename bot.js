@@ -1243,22 +1243,37 @@ if (message.content === "!health") {
 }
   // Help
 if (message.content === "!help") {
-  return message.reply(
-    "🤖 Mattel Scanner Commands\n\n" +
-    "!status\n" +
-"!stats\n" +
-"!debug\n" +
-"!summary\n" +
-"!latest\n" +
-"!health\n" +
-"!counts\n" +
-"!product keyword\n" +
-"!alerts\n" +
-"!testnew\n" +
-"!help\n" +
-"!scan\n" +
-"!upcoming"
-  );
+ return message.reply(
+  "🤖 Mattel Scanner Commands\n\n" +
+
+  "📦 Core\n" +
+  "!status\n" +
+  "!health\n" +
+  "!stats\n" +
+  "!counts\n" +
+  "!debug\n\n" +
+
+  "🔍 Products\n" +
+  "!product keyword\n" +
+  "!latest\n" +
+  "!upcoming\n\n" +
+
+  "⭐ Watchlist\n" +
+  "!watch keyword\n" +
+  "!unwatch keyword\n" +
+  "!watchlist\n" +
+  "!watchstats\n" +
+  "!watchstock\n" +
+  "!watchin\n" +
+  "!watchout\n\n" +
+
+  "📈 Analytics\n" +
+  "!hot\n" +
+  "!predict keyword\n\n" +
+
+  "📢 Alerts\n" +
+  "!alerts\n"
+);
 }
   // Scan
   if (message.content === "!scan") {
