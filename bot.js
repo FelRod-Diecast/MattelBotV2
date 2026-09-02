@@ -1442,9 +1442,9 @@ if (message.content === "!hidden") {
     Object.values(loadProducts());
 
   const hiddenProducts =
-    products.filter(
-      p => p.wasHidden === true
-    );
+  products.filter(
+    p => p.available === false
+  );
 
   if (hiddenProducts.length === 0) {
 
