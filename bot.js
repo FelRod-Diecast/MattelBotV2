@@ -377,7 +377,7 @@ alerts.splice(10);
 saveAlerts(alerts);
         
 const matchedKeyword =
-  WATCHLIST.find(keyword =>
+ loadWatchlist().find(keyword =>
     product.title
       .toLowerCase()
       .includes(keyword)
