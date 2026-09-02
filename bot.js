@@ -959,6 +959,33 @@ return message.reply(reply);
 
 }
   if (message.content === "!watchlist") {
+if (message.content.startsWith("!watch ")) {
+
+  const keyword = message.content
+    .replace("!watch ", "")
+    .toLowerCase()
+    .trim();
+
+  const watchlist = loadWatchlist();
+
+  if (watchlist.includes(keyword)) {
+    return message.reply(
+      `⚠️ ${keyword} is already being watched.`
+    );
+  }
+
+  watchlist.push(keyword);
+
+  fs.writeFileSync(
+    WATCHLIST_FILE,
+    JSON.stringify(watchlist, null, 2)
+  );
+
+  return message.reply(
+    `✅ Added "${keyword}" to watchlist.`
+  );
+
+}    
 
   const watchlist = loadWatchlist();
 
