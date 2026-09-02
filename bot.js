@@ -238,16 +238,12 @@ product.variants?.some(v => v.available);
 const existingProduct =
 savedProducts[product.id];
       
-      if (!savedProducts[product.id]) {
-        const price =
-          product.variants?.[0]?.price || "Unknown";
-        console.log(
-  "IMAGE:",
-  product.images?.[0]?.src || "NO IMAGE"
-);
-
-
-              if (
+ if (!savedProducts[product.id]) {
+  const price =
+product.variants?.[0]?.price || "Unknown";
+console.log(
+ 
+ if (
   !inStock &&
   !savedProducts[product.id]?.hiddenAlertSent
 ) {
@@ -292,9 +288,10 @@ const row = new ActionRowBuilder()
   );
 
 await channel.send({
-  embeds: [embed]
+  embeds: [embed],
+  components: [row]
 });
-
+  
 } else {
 
 const embed = new EmbedBuilder()
