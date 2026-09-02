@@ -1067,10 +1067,14 @@ if (message.content === "!watchstock") {
 
     if (!match) continue;
 
-    reply +=
-      `${match.available ? "✅" : "❌"} ` +
-      `${match.title}\n\n`;
+   const status =
+  match.available === true
+    ? "✅ IN STOCK"
+    : "❌ SOLD OUT";
 
+reply +=
+  `${status}\n` +
+  `${match.title}\n\n`;
   }
 
   return message.reply(reply);
