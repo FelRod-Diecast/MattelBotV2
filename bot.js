@@ -1027,7 +1027,7 @@ const shipMatch =
 
     }
 
-    iif (shipMatch) {
+    if (shipMatch) {
 
   console.log(
     "SHIP MATCH:",
