@@ -680,7 +680,13 @@ if (message.content === "!testnew") {
 .setFooter({
   text: "MattelBotV2"
 });
+const stats = loadStats();
 
+stats.newProductsToday++;
+
+saveStats(stats);
+
+console.log("TEST NEW PRODUCT COUNT");
   return message.reply({
     embeds: [embed]
   });
