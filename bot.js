@@ -1087,8 +1087,10 @@ if (message.content === "!watchin") {
   const products =
     Object.values(loadProducts());
 
-  let reply =
-    "⭐ Watchlist In Stock\n\n";
+  let count = 0;
+
+let reply =
+  "⭐ Watchlist In Stock\n\n";
 
   for (const keyword of watchlist) {
 
@@ -1104,12 +1106,17 @@ if (message.content === "!watchin") {
     if (match.available !== true)
       continue;
 
-    reply +=
-      `✅ ${match.title}\n\n`;
+   count++;
+
+reply +=
+  `✅ ${match.title}\n\n`;
 
   }
 
-  return message.reply(reply);
+  reply +=
+  `\n📊 Total In Stock: ${count}`;
+
+return message.reply(reply);
 
 }
 if (message.content === "!watchlist") {
