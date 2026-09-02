@@ -414,40 +414,47 @@ if (
   const wasHidden =
     existingProduct.wasHidden === true;
 
-  const embed = new EmbedBuilder()
-    .setColor(0x0099ff)
-    .setTitle(
-      wasHidden
-        ? "🚨 HIDDEN PRODUCT IS NOW LIVE"
-        : "🔥 BACK IN STOCK"
-    )
-    .addFields(
-  {
-    name: "📦 Product",
-    value: product.title
-  },
-  {
-    name: "✅ Status",
-    value: "BACK IN STOCK",
-    inline: true
-  },
-  {
-    name: "📈 Lifetime Restocks",
-    value: String(
-      (existingProduct.stats?.restockEvents || 0) + 1
-    ),
-    inline: true
-  }
+ const embed = new EmbedBuilder()
+.setColor(0x0099ff)
+.setTitle(
+wasHidden
+? "🚨 HIDDEN PRODUCT IS NOW LIVE"
+: "🔥 BACK IN STOCK"
 )
-    .setURL(
-      `https://creations.mattel.com/products/${product.handle}`
-    )
-    .setThumbnail(
-      product.images?.[0]?.src || null
-    )
-    .setFooter({
-      text: "MattelBotV2"
-    });
+.addFields(
+{
+name: "📦 Product",
+value: product.title
+},
+{
+name: "✅ Status",
+value: "BACK IN STOCK",
+inline: true
+},
+{
+name: "📈 Lifetime Restocks",
+value: String(
+(existingProduct.stats?.restockEvents || 0) + 1
+),
+inline: true
+},
+{
+name: "⏰ First Seen",
+value: new Date(
+existingProduct.detectedAt
+).toLocaleDateString(),
+inline: true
+}
+)
+.setURL(
+`https://creations.mattel.com/products/${product.handle}`
+)
+.setThumbnail(
+product.images?.[0]?.src || null
+)
+.setFooter({
+text: "MattelBotV2"
+});
 await channel.send({
   embeds: [embed]
 });
