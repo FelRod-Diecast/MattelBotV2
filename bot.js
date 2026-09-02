@@ -1436,6 +1436,42 @@ if (message.content === "!watchsummary") {
   return message.reply(reply);
 
 } 
+if (message.content === "!hidden") {
+
+  const products =
+    Object.values(loadProducts());
+
+  const hiddenProducts =
+    products.filter(
+      p => p.wasHidden === true
+    );
+
+  if (hiddenProducts.length === 0) {
+
+    return message.reply(
+      "✅ No hidden products tracked."
+    );
+
+  }
+
+  let reply =
+    "🚨 Hidden Products\n\n";
+
+  hiddenProducts
+    .slice(0, 25)
+    .forEach(product => {
+
+      reply +=
+        `📦 ${product.title}\n`;
+
+    });
+
+  reply +=
+    `\n📊 Total Hidden: ${hiddenProducts.length}`;
+
+  return message.reply(reply);
+
+}  
 if (message.content === "!watchlist") {
 
    const watchlist = loadWatchlist();
