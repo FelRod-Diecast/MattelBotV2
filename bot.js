@@ -375,7 +375,14 @@ console.log(
 );
 }
 else {
- 
+console.log(
+  "RESTOCK CHECK:",
+  product.title,
+  "saved:",
+  existingProduct.available,
+  "current:",
+  inStock
+); 
 if (
 existingProduct.available === false &&
 inStock === true
