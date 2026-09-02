@@ -402,39 +402,40 @@ console.log(
 }
 else {
 if (
-existingProduct.available === false &&
-inStock === true
-)
-const wasHidden =
-  existingProduct.wasHidden === true;
-{
-const embed = new EmbedBuilder()
-  .setColor(0x0099ff)
-  .setTitle("🔥 BAC.setTitle(
-wasHidden
-? "🚨 HIDDEN PRODUCT IS NOW LIVE"
-: "🔥 BACK IN STOCK"
-)K IN STOCK")
-  .addFields(
-    {
-      name: "📦 Product",
-      value: product.title
-    },
-    {
-      name: "✅ Status",
-      value: "BACK IN STOCK",
-      inline: true
-    }
-  )
-.setURL(
-  `https://creations.mattel.com/products/${product.handle}`
-)
-  .setThumbnail(
-    product.images?.[0]?.src || null
-  )
-  .setFooter({
-    text: "MattelBotV2"
-  });
+  existingProduct.available === false &&
+  inStock === true
+) {
+
+  const wasHidden =
+    existingProduct.wasHidden === true;
+
+  const embed = new EmbedBuilder()
+    .setColor(0x0099ff)
+    .setTitle(
+      wasHidden
+        ? "🚨 HIDDEN PRODUCT IS NOW LIVE"
+        : "🔥 BACK IN STOCK"
+    )
+    .addFields(
+      {
+        name: "📦 Product",
+        value: product.title
+      },
+      {
+        name: "✅ Status",
+        value: "BACK IN STOCK",
+        inline: true
+      }
+    )
+    .setURL(
+      `https://creations.mattel.com/products/${product.handle}`
+    )
+    .setThumbnail(
+      product.images?.[0]?.src || null
+    )
+    .setFooter({
+      text: "MattelBotV2"
+    });
 await channel.send({
   embeds: [embed]
 });
