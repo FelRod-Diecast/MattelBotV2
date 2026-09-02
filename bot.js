@@ -984,8 +984,8 @@ if (message.content.startsWith("!launch ")) {
 
     }
 
-    const url =
-      `https://creations.mattel.com/products/${match.handle}`;
+ const url =
+  `https://creations.mattel.com/products/${match.handle}`;
 
     const response =
       await fetch(url);
