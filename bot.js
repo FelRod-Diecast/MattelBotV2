@@ -1055,9 +1055,7 @@ if (message.content === "!watchstock") {
 
 if (message.content === "!watchlist") {
 
-if (message.content === "!watchlist") {
-
-  const watchlist = loadWatchlist();
+   const watchlist = loadWatchlist();
 
   return message.reply(
     "⭐ Watchlist\n\n" +
