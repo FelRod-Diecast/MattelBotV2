@@ -1027,12 +1027,17 @@ const shipMatch =
 
     }
 
-    if (shipMatch) {
+    iif (shipMatch) {
 
-      reply +=
-        `🚚 ${shipMatch[0]}\n\n`;
+  console.log(
+    "SHIP MATCH:",
+    shipMatch[0]
+  );
 
-    }
+  reply +=
+    `🚚 ${shipMatch[0]}\n\n`;
+
+}
 
     reply +=
       `🔗 ${url}`;
