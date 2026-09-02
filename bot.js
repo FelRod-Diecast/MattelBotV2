@@ -417,16 +417,23 @@ if (
         : "🔥 BACK IN STOCK"
     )
     .addFields(
-      {
-        name: "📦 Product",
-        value: product.title
-      },
-      {
-        name: "✅ Status",
-        value: "BACK IN STOCK",
-        inline: true
-      }
-    )
+  {
+    name: "📦 Product",
+    value: product.title
+  },
+  {
+    name: "✅ Status",
+    value: "BACK IN STOCK",
+    inline: true
+  },
+  {
+    name: "📈 Lifetime Restocks",
+    value: String(
+      (existingProduct.stats?.restockEvents || 0) + 1
+    ),
+    inline: true
+  }
+)
     .setURL(
       `https://creations.mattel.com/products/${product.handle}`
     )
