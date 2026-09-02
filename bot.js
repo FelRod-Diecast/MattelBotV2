@@ -553,6 +553,10 @@ savedProducts[product.id].lastSeen =
 }
  
 saveProducts(savedProducts);
+console.log(
+  "SAVING STATS:",
+  stats
+);    
 saveStats(stats);
  
 console.log(
