@@ -1177,7 +1177,63 @@ if (message.content === "!watchout") {
   return message.reply(reply);
 
 }
-  
+
+  if (message.content === "!watchsummary") {
+
+  const watchlist = loadWatchlist();
+
+  const products =
+    Object.values(loadProducts());
+
+  let inStock = 0;
+  let soldOut = 0;
+  let restocks = 0;
+  let soldOutEvents = 0;
+
+  let reply =
+    "⭐ Watchlist Summary\n\n";
+
+  for (const keyword of watchlist) {
+
+    const match =
+      products.find(product =>
+        product.title
+          .toLowerCase()
+          .includes(keyword)
+      );
+
+    if (!match) continue;
+
+    if (match.available === true) {
+      inStock++;
+
+      reply +=
+        `✅ ${match.title}\n`;
+    } else {
+      soldOut++;
+
+      reply +=
+        `❌ ${match.title}\n`;
+    }
+
+    restocks +=
+      match.stats?.restockEvents || 0;
+
+    soldOutEvents +=
+      match.stats?.soldOutEvents || 0;
+
+  }
+
+  reply +=
+    "\n\n📊 Summary\n" +
+    `✅ In Stock: ${inStock}\n` +
+    `❌ Sold Out: ${soldOut}\n` +
+    `🔥 Restocks Seen: ${restocks}\n` +
+    `🚫 Sold Out Events: ${soldOutEvents}`;
+
+  return message.reply(reply);
+
+}
 if (message.content === "!watchlist") {
 
    const watchlist = loadWatchlist();
