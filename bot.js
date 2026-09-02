@@ -1015,6 +1015,38 @@ if (message.content.startsWith("!unwatch ")) {
 
 }
 if (message.content === "!watchlist") {
+  
+  if (message.content === "!watchstats") {
+
+  const watchlist = loadWatchlist();
+
+  const products =
+    Object.values(loadProducts());
+
+  let reply =
+    "⭐ Watchlist Stats\n\n";
+
+  for (const keyword of watchlist) {
+
+    const match =
+      products.find(product =>
+        product.title
+          .toLowerCase()
+          .includes(keyword)
+      );
+
+    if (!match) continue;
+
+    reply +=
+      `📦 ${match.title}\n` +
+      `🔥 Restocks: ${match.stats?.restockEvents || 0}\n` +
+      `❌ Sold Outs: ${match.stats?.soldOutEvents || 0}\n\n`;
+
+  }
+
+  return message.reply(reply);
+
+}
 
   const watchlist = loadWatchlist();
 
