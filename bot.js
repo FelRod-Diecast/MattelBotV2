@@ -439,6 +439,30 @@ if (
 await channel.send({
   embeds: [embed]
 });
+const matchedKeyword =
+  loadWatchlist().find(keyword =>
+    product.title
+      .toLowerCase()
+      .includes(keyword)
+  );
+
+if (matchedKeyword) {
+
+  await channel.send(
+
+    "🚨 WATCHLIST RESTOCK 🚨\n\n" +
+
+    `📦 ${product.title}\n` +
+
+    `🔑 Keyword: ${matchedKeyword}\n` +
+
+    `✅ Back In Stock\n` +
+
+    `🔗 https://creations.mattel.com/products/${product.handle}`
+
+  );
+
+}  
 alerts.unshift(
   `🔥 ${product.title}`
 );
