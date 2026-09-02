@@ -94,6 +94,18 @@ function saveAlerts(alerts) {
     JSON.stringify(alerts, null, 2)
   );
 }
+function loadWatchlist() {
+  try {
+    return JSON.parse(
+      fs.readFileSync(
+        WATCHLIST_FILE,
+        "utf8"
+      )
+    );
+  } catch {
+    return WATCHLIST;
+  }
+}
 // =========================
 // Mattel API
 // =========================
