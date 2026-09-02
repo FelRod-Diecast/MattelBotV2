@@ -960,35 +960,80 @@ return message.reply(reply);
 }
 if (message.content.startsWith("!launch ")) {
 
-  const keyword = message.content
-    .replace("!launch ", "")
-    .toLowerCase();
+  try {
 
-  const products = loadProducts();
+    const keyword = message.content
+      .replace("!launch ", "")
+      .toLowerCase();
 
-  const match =
-    Object.values(products)
-      .find(product =>
-        product.title
-          .toLowerCase()
-          .includes(keyword)
+    const products = loadProducts();
+
+    const match =
+      Object.values(products)
+        .find(product =>
+          product.title
+            .toLowerCase()
+            .includes(keyword)
+        );
+
+    if (!match) {
+
+      return message.reply(
+        "❌ Product not found."
       );
 
-  if (!match) {
+    }
+
+    const url =
+      `https://creations.mattel.com/products/${match.handle}`;
+
+    const response =
+      await fetch(url);
+
+    const html =
+      await response.text();
+
+    const launchMatch =
+      html.match(
+        /Launches\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}\s+[ap]m\s+PT/i
+      );
+
+    const shipMatch =
+      html.match(
+        /Ships on or before\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}/i
+      );
+
+    let reply =
+      `🚀 Launch Information\n\n${match.title}\n\n`;
+
+    if (launchMatch) {
+
+      reply +=
+        `📅 ${launchMatch[0]}\n\n`;
+
+    }
+
+    if (shipMatch) {
+
+      reply +=
+        `🚚 ${shipMatch[0]}\n\n`;
+
+    }
+
+    reply +=
+      `🔗 ${url}`;
+
+    return message.reply(reply);
+
+  } catch (error) {
+
+    console.error(error);
 
     return message.reply(
-      "❌ Product not found."
+      "❌ Could not retrieve launch data."
     );
 
   }
-
-  return message.reply(
-
-    "🚀 Launch Information\n\n" +
-    `${match.title}\n\n` +
-    `🔗 https://creations.mattel.com/products/${match.handle}`
-
-  );
 
 }
   if (message.content.startsWith("!watch ")) {
