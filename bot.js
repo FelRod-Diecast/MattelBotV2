@@ -37,7 +37,8 @@ const WATCHLIST = [
   "porsche",
   "boulevard"
 ];
-
+const WATCHLIST_FILE =
+  "./watchlist.json";
 const ALERTS_FILE = "./alerts.json";
 
 // =========================
