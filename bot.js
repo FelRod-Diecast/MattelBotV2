@@ -929,13 +929,16 @@ return message.reply(reply);
   }
 
   if (
-    !match.stats ||
-    match.stats.restockTimestamps.length < 2
-  ) {
-    return message.reply(
-      "❌ Not enough history yet."
-    );
-  }
+  !match.stats ||
+  match.stats.restockTimestamps.length < 2
+) {
+  return message.reply(
+    "📦 " + match.title + "\n\n" +
+    `🔥 Restocks Seen: ${match.stats?.restockEvents || 0}\n` +
+    `❌ Sold Outs Seen: ${match.stats?.soldOutEvents || 0}\n\n` +
+    "⏳ Still collecting history..."
+  );
+}
 
   return message.reply(
     `📦 ${match.title}`
