@@ -997,39 +997,6 @@ console.log(
   "HTML LENGTH:",
   html.length
 );
-console.log(
-  "HAS LAUNCHES:",
-  html.includes("Launches")
-);
-
-console.log(
-  "HAS SHIPS:",
-  html.includes("Ships on or before")
-);
-
- const launchMatch =
-  html.match(
-    /Launches\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}\s+[ap]m\s+PT/i
-  );
-
-const shipIndex =
-  html.indexOf("Ships on or before");
-
-console.log(
-  "SHIP INDEX:",
-  shipIndex
-);
-
-if (shipIndex > -1) {
-
-  console.log(
-    html.substring(
-      shipIndex,
-      shipIndex + 100
-    )
-  );
-
-}
 
     let reply =
       `🚀 Launch Information\n\n${match.title}\n\n`;
@@ -1041,19 +1008,7 @@ if (shipIndex > -1) {
 
     }
 
-    if (shipMatch) {
-
-  console.log(
-    "SHIP MATCH:",
-    shipMatch[0]
-  );
-
-  reply +=
-    `🚚 ${shipMatch[0]}\n\n`;
-
-}
-
-    reply +=
+     reply +=
       `🔗 ${url}`;
 
     return message.reply(reply);
