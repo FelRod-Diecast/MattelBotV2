@@ -338,7 +338,7 @@ available: inStock,
 price: price,
 detectedAt: new Date().toISOString(),
 lastSeen: new Date().toISOString(),
-watchlistAlertSent: matchedKeyword ? true : false,
+watchlistAlertSent: false,
 hiddenAlertSent: !inStock
 };
         
