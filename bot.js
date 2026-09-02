@@ -1178,7 +1178,7 @@ if (message.content === "!watchout") {
 
 }
 
-  if (message.content === "!watchsummary") {
+if (message.content === "!watchsummary") {
 
   const watchlist = loadWatchlist();
 
@@ -1204,21 +1204,21 @@ if (message.content === "!watchout") {
 
     if (!match) continue;
 
-   if (match.available === true) {
+    if (match.available === true) {
 
-  inStock++;
+      inStock++;
 
-  reply +=
-    `✅ ${match.title}\n`;
+      reply +=
+        `✅ ${match.title}\n`;
 
-} else {
+    } else {
 
-  soldOut++;
+      soldOut++;
 
-  reply +=
-    `❌ ${match.title}\n`;
+      reply +=
+        `❌ ${match.title}\n`;
 
-}
+    }
 
     restocks +=
       match.stats?.restockEvents || 0;
@@ -1229,7 +1229,7 @@ if (message.content === "!watchout") {
   }
 
   reply +=
-    "\n\n📊 Summary\n" +
+    "\n📊 Summary\n" +
     `✅ In Stock: ${inStock}\n` +
     `❌ Sold Out: ${soldOut}\n` +
     `🔥 Restocks Seen: ${restocks}\n` +
