@@ -1016,13 +1016,21 @@ if (message.content.startsWith("!unwatch ")) {
 }
 if (message.content === "!watchstats") {
 
+  // watchstats code
+
+  return message.reply(reply);
+
+}
+
+if (message.content === "!watchstock") {
+
   const watchlist = loadWatchlist();
 
   const products =
     Object.values(loadProducts());
 
   let reply =
-    "⭐ Watchlist Stats\n\n";
+    "⭐ Watchlist Stock Status\n\n";
 
   for (const keyword of watchlist) {
 
@@ -1036,15 +1044,16 @@ if (message.content === "!watchstats") {
     if (!match) continue;
 
     reply +=
-      `📦 ${match.title}\n` +
-      `🔥 Restocks: ${match.stats?.restockEvents || 0}\n` +
-      `❌ Sold Outs: ${match.stats?.soldOutEvents || 0}\n\n`;
+      `${match.available ? "✅" : "❌"} ` +
+      `${match.title}\n\n`;
 
   }
 
   return message.reply(reply);
 
 }
+
+if (message.content === "!watchlist") {
 
 if (message.content === "!watchlist") {
 
