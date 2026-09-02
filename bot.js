@@ -480,6 +480,31 @@ saveAlerts(alerts);
 savedProducts[product.id]
   .stats
   .restockEvents++;
+  const totalRestocks =
+savedProducts[product.id]
+.stats
+.restockEvents;
+if (
+  totalRestocks === 3 ||
+  totalRestocks === 5 ||
+  totalRestocks === 10
+) {
+
+  await channel.send(
+
+    "🔥 HOT PRODUCT ALERT 🔥\n\n" +
+
+    `📦 ${product.title}\n` +
+
+    `📈 Restocks Seen: ${totalRestocks}\n` +
+
+    "🚀 High Activity Product\n" +
+
+    `🔗 https://creations.mattel.com/products/${product.handle}`
+
+  );
+
+}  
 
 savedProducts[product.id]
   .stats
