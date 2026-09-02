@@ -370,28 +370,14 @@ if (matchedKeyword) {
         
 stats.newProductsToday++;
 console.log(
-  "NEW COUNT:",
-  stats.newProductsToday
-);        
- 
-console.log(
 `🆕 New Product Found: ${product.title}`
 );
 }
 else {
-console.log(
-  "RESTOCK CHECK:",
-  product.title,
-  "saved:",
-  existingProduct.available,
-  "current:",
-  inStock
-); 
 if (
 existingProduct.available === false &&
 inStock === true
 ) {
-
 const embed = new EmbedBuilder()
   .setColor(0x0099ff)
   .setTitle("🔥 BACK IN STOCK")
@@ -415,8 +401,6 @@ const embed = new EmbedBuilder()
   .setFooter({
     text: "MattelBotV2"
   });
-``
-
 await channel.send({
   embeds: [embed]
 });
@@ -428,10 +412,6 @@ alerts.splice(10);
 
 saveAlerts(alerts);
 stats.restocksToday++;
-console.log(
-  "RESTOCK COUNT:",
-  stats.restocksToday
-);  
  console.log(
 `🔥 Restock Detected: ${product.title}`
 );
@@ -477,11 +457,6 @@ alerts.splice(10);
 
 saveAlerts(alerts); 
 stats.soldOutToday++;
-console.log(
-  "SOLDOUT COUNT:",
-  stats.soldOutToday
-);  
- 
 console.log(
 `❌ Sold Out: ${product.title}`
 );
@@ -530,7 +505,6 @@ alerts.unshift(
 alerts.splice(10);
 
 saveAlerts(alerts);
-``
 await channel.send({
   embeds: [embed]
 });
@@ -553,10 +527,7 @@ savedProducts[product.id].lastSeen =
 }
  
 saveProducts(savedProducts);
-console.log(
-  "SAVING STATS:",
-  stats
-);    
+
 saveStats(stats);
  
 console.log(
