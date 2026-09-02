@@ -173,10 +173,16 @@ savedProducts[product.id] = {
   handle: product.handle,
   available: inStock,
   price: price,
-detectedAt: new Date().toISOString(),
-lastSeen: new Date().toISOString(),
-watchlistAlertSent: false,
-hiddenAlertSent: false
+  detectedAt: new Date().toISOString(),
+  lastSeen: new Date().toISOString(),
+  watchlistAlertSent: false,
+  hiddenAlertSent: false,
+
+  stats: {
+    restockEvents: 0,
+    soldOutEvents: 0,
+    restockTimestamps: []
+  }
 };
       });
 
@@ -328,14 +334,20 @@ await channel.send({
 }
 
 savedProducts[product.id] = {
-title: product.title,
-handle: product.handle,
-available: inStock,
-price: price,
-detectedAt: new Date().toISOString(),
-lastSeen: new Date().toISOString(),
-watchlistAlertSent: false,
-hiddenAlertSent: !inStock
+  title: product.title,
+  handle: product.handle,
+  available: inStock,
+  price: price,
+  detectedAt: new Date().toISOString(),
+  lastSeen: new Date().toISOString(),
+  watchlistAlertSent: false,
+  hiddenAlertSent: !inStock,
+
+  stats: {
+    restockEvents: 0,
+    soldOutEvents: 0,
+    restockTimestamps: []
+  }
 };
         
  alerts.unshift(
@@ -407,6 +419,15 @@ alerts.unshift(
 alerts.splice(10);
 
 saveAlerts(alerts);
+savedProducts[product.id]
+  .stats
+  .restockEvents++;
+
+savedProducts[product.id]
+  .stats
+  .restockTimestamps
+  .push(Date.now());
+  
 stats.restocksToday++;
  console.log(
 `🔥 Restock Detected: ${product.title}`
@@ -452,6 +473,10 @@ alerts.unshift(
 alerts.splice(10);
 
 saveAlerts(alerts); 
+savedProducts[product.id]
+  .stats
+  .soldOutEvents++;
+  
 stats.soldOutToday++;
 console.log(
 `❌ Sold Out: ${product.title}`
