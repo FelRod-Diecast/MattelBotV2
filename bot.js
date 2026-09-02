@@ -423,7 +423,6 @@ alerts.unshift(
 alerts.splice(10);
 
 saveAlerts(alerts);
-st
 stats.restocksToday++;
  console.log(
 `🔥 Restock Detected: ${product.title}`
