@@ -985,7 +985,35 @@ return message.reply(reply);
   );
 
 }
+if (message.content.startsWith("!unwatch ")) {
 
+  const keyword = message.content
+    .replace("!unwatch ", "")
+    .toLowerCase()
+    .trim();
+
+  const watchlist = loadWatchlist();
+
+  if (!watchlist.includes(keyword)) {
+    return message.reply(
+      `⚠️ ${keyword} is not in the watchlist.`
+    );
+  }
+
+  const updated = watchlist.filter(
+    item => item !== keyword
+  );
+
+  fs.writeFileSync(
+    WATCHLIST_FILE,
+    JSON.stringify(updated, null, 2)
+  );
+
+  return message.reply(
+    `✅ Removed "${keyword}" from watchlist.`
+  );
+
+}
 if (message.content === "!watchlist") {
 
   const watchlist = loadWatchlist();
