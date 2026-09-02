@@ -1080,7 +1080,38 @@ reply +=
   return message.reply(reply);
 
 }
+if (message.content === "!watchin") {
 
+  const watchlist = loadWatchlist();
+
+  const products =
+    Object.values(loadProducts());
+
+  let reply =
+    "⭐ Watchlist In Stock\n\n";
+
+  for (const keyword of watchlist) {
+
+    const match =
+      products.find(product =>
+        product.title
+          .toLowerCase()
+          .includes(keyword)
+      );
+
+    if (!match) continue;
+
+    if (match.available !== true)
+      continue;
+
+    reply +=
+      `✅ ${match.title}\n\n`;
+
+  }
+
+  return message.reply(reply);
+
+}
 if (message.content === "!watchlist") {
 
    const watchlist = loadWatchlist();
