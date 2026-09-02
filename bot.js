@@ -241,8 +241,7 @@ savedProducts[product.id];
  if (!savedProducts[product.id]) {
   const price =
 product.variants?.[0]?.price || "Unknown";
-console.log(
- 
+
  if (
   !inStock &&
   !savedProducts[product.id]?.hiddenAlertSent
