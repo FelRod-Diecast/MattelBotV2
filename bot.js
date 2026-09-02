@@ -1238,6 +1238,73 @@ if (message.content === "!watchsummary") {
   return message.reply(reply);
 
 }
+ if (message.content === "!dashboard") {
+
+  const watchlist = loadWatchlist();
+
+  const products =
+    Object.values(loadProducts());
+
+  const stats = loadStats();
+
+  let inStock = 0;
+  let soldOut = 0;
+
+  let topProduct = "None";
+  let topScore = 0;
+
+  for (const keyword of watchlist) {
+
+    const match =
+      products.find(product =>
+        product.title
+          .toLowerCase()
+          .includes(keyword)
+      );
+
+    if (!match) continue;
+
+    if (match.available === true) {
+      inStock++;
+    } else {
+      soldOut++;
+    }
+
+    const score =
+      (match.stats?.restockEvents || 0) +
+      (match.stats?.soldOutEvents || 0);
+
+    if (score > topScore) {
+      topScore = score;
+      topProduct = match.title;
+    }
+
+  }
+
+  const alerts = loadAlerts();
+
+  let reply =
+    "📊 Mattel Dashboard\n\n" +
+
+    "⭐ Watchlist\n" +
+    `✅ In Stock: ${inStock}\n` +
+    `❌ Sold Out: ${soldOut}\n\n` +
+
+    "📈 Activity\n" +
+    `🏆 Top Product: ${topProduct}\n` +
+    `📊 Activity Score: ${topScore}\n\n` +
+
+    "📢 Today\n" +
+    `🆕 New Products: ${stats.newProductsToday}\n` +
+    `🔥 Restocks: ${stats.restocksToday}\n` +
+    `❌ Sold Outs: ${stats.soldOutToday}\n\n` +
+
+    "🚨 Latest Alert\n" +
+    `${alerts[0] || "No alerts yet"}`;
+
+  return message.reply(reply);
+
+} 
 if (message.content === "!watchlist") {
 
    const watchlist = loadWatchlist();
