@@ -136,7 +136,6 @@ products: allProducts
 async function initializeProducts() {
   try {
     const data = await getMattelData();
-
   const products = data.products.filter(product => {
   const title = product.title.toLowerCase();
 
@@ -179,10 +178,13 @@ savedProducts[product.id] = {
   hiddenAlertSent: false,
 
   stats: {
-    restockEvents: 0,
-    soldOutEvents: 0,
-    restockTimestamps: []
-  }
+  restockEvents: 0,
+  soldOutEvents: 0,
+  restockTimestamps: []
+},
+
+predictionAlertSent: false,
+etaAlertSent: false
 };
       });
 
@@ -343,11 +345,14 @@ savedProducts[product.id] = {
   watchlistAlertSent: false,
   hiddenAlertSent: !inStock,
 
-  stats: {
-    restockEvents: 0,
-    soldOutEvents: 0,
-    restockTimestamps: []
-  }
+stats: {
+  restockEvents: 0,
+  soldOutEvents: 0,
+  restockTimestamps: []
+},
+
+predictionAlertSent: false,
+etaAlertSent: false
 };
         
  alerts.unshift(
@@ -427,6 +432,11 @@ savedProducts[product.id]
   .stats
   .restockTimestamps
   .push(Date.now());
+  savedProducts[product.id]
+  .predictionAlertSent = false;
+
+savedProducts[product.id]
+  .etaAlertSent = false;
   
 stats.restocksToday++;
  console.log(
@@ -544,6 +554,21 @@ savedProducts[product.id].available =
 
 savedProducts[product.id].lastSeen =
   new Date().toISOString();
+if (
+  savedProducts[product.id]
+    .predictionAlertSent === undefined
+) {
+  savedProducts[product.id]
+    .predictionAlertSent = false;
+}
+
+if (
+  savedProducts[product.id]
+    .etaAlertSent === undefined
+) {
+  savedProducts[product.id]
+    .etaAlertSent = false;
+}  
 }
 }
  
