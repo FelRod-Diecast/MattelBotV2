@@ -997,6 +997,15 @@ console.log(
   "HTML LENGTH:",
   html.length
 );
+console.log(
+  "HAS LAUNCHES:",
+  html.includes("Launches")
+);
+
+console.log(
+  "HAS SHIPS:",
+  html.includes("Ships on or before")
+);
 
  const launchMatch =
   html.match(
