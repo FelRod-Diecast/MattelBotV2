@@ -958,6 +958,16 @@ return message.reply(reply);
   );
 
 }
+  if (message.content === "!watchlist") {
+
+  const watchlist = loadWatchlist();
+
+  return message.reply(
+    "⭐ Watchlist\n\n" +
+    watchlist.join("\n")
+  );
+
+}
   // Health
 if (message.content === "!health") {
 
