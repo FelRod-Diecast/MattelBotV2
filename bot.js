@@ -285,7 +285,12 @@ product.variants?.[0]?.price || "Unknown";
       name: "👀 Status",
       value: "NOT AVAILABLE YET",
       inline: true
-    }
+    },
+    {
+  name: "⏰ First Seen",
+  value: new Date().toLocaleString(),
+  inline: true
+}
   )
 .setURL(
   `https://creations.mattel.com/products/${product.handle}`
