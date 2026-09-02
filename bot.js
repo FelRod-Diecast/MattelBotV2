@@ -984,19 +984,19 @@ if (message.content.startsWith("!launch ")) {
 
     }
 
- const url =
-  `https://creations.mattel.com/products/${match.handle}`;
+    const url =
+      `https://creations.mattel.com/products/${match.handle}`;
 
     const response =
       await fetch(url);
 
-  const html =
-  await response.text();
+    const html =
+      await response.text();
 
-console.log(
-  "HTML LENGTH:",
-  html.length
-);
+    const launchMatch =
+      html.match(
+        /Launches\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}\s+[ap]m\s+PT/i
+      );
 
     let reply =
       `🚀 Launch Information\n\n${match.title}\n\n`;
@@ -1008,7 +1008,7 @@ console.log(
 
     }
 
-     reply +=
+    reply +=
       `🔗 ${url}`;
 
     return message.reply(reply);
