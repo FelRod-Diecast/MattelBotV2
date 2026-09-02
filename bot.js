@@ -356,7 +356,8 @@ savedProducts[product.id] = {
   detectedAt: new Date().toISOString(),
   lastSeen: new Date().toISOString(),
   watchlistAlertSent: false,
-  hiddenAlertSent: !inStock,
+ hiddenAlertSent: !inStock,
+wasHidden: !inStock,
 
 stats: {
   restockEvents: 0,
@@ -403,10 +404,17 @@ else {
 if (
 existingProduct.available === false &&
 inStock === true
-) {
+)
+const wasHidden =
+  existingProduct.wasHidden === true;
+{
 const embed = new EmbedBuilder()
   .setColor(0x0099ff)
-  .setTitle("🔥 BACK IN STOCK")
+  .setTitle("🔥 BAC.setTitle(
+wasHidden
+? "🚨 HIDDEN PRODUCT IS NOW LIVE"
+: "🔥 BACK IN STOCK"
+)K IN STOCK")
   .addFields(
     {
       name: "📦 Product",
