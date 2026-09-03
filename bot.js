@@ -389,14 +389,18 @@ const matchedKeyword =
       .includes(keyword)
   );
 
-if (matchedKeyword) {
+if (
+matchedKeyword &&
+inStock === true
+) {
 
-  await channel.send(
-    `🚨 WATCHLIST MATCH 🚨\n\n` +
-    `📦 ${product.title}\n` +
-    `🔑 Keyword: ${matchedKeyword}\n` +
-    `🔗 https://creations.mattel.com/products/${product.handle}`
-  );
+await channel.send(
+  `🚨 WATCHLIST MATCH 🚨\n\n` +
+  `📦 ${product.title}\n` +
+  `🔑 Keyword: ${matchedKeyword}\n` +
+  `✅ IN STOCK\n` +
+  `🔗 https://creations.mattel.com/products/${product.handle}`
+);
 
 }
         
