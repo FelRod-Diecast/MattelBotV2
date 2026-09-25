@@ -1627,7 +1627,8 @@ if (message.content === "!help") {
 
     const embed = new EmbedBuilder()
   .setColor(0x0099ff)
-  .setTitle(`🔍 Results for "${keyword}"`)
+ JavaScript
+.setTitle("🚗 Latest Hot Wheels")
   .setDescription(reply)
   .setFooter({
     text: "MattelBotV2"
