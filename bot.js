@@ -124,8 +124,17 @@ const text = await response.text();
 if (text.startsWith("<!DOCTYPE")) {
 break;
 }
- 
-const data = JSON.parse(text);
+ let data;
+
+try {
+
+  data = JSON.parse(text);
+
+} catch {
+
+  break;
+
+}
  
 if (!data.products || data.products.length === 0) {
 break;
