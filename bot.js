@@ -150,7 +150,43 @@ return {
 products: allProducts
 };
 }
+// =========================
+// Product Page Verification
+// =========================
 
+async function getProductPageInfo(handle) {
+  const productUrl =
+    `https://creations.mattel.com/products/${handle}`;
+
+  let html = "";
+  let productPageFetched = false;
+
+  try {
+    const response = await fetch(productUrl);
+
+    if (response.ok) {
+      html = await response.text();
+      productPageFetched = true;
+    }
+  } catch (error) {
+    console.error(
+      `⚠️ Product page check failed: ${handle}`,
+      error.message
+    );
+  }
+
+  const pageTextLower = html.toLowerCase();
+
+  const explicitlySoldOut =
+    pageTextLower.includes("sold out") ||
+    pageTextLower.includes("out of stock") ||
+    pageTextLower.includes("unavailable");
+
+  return {
+    productPageFetched,
+    explicitlySoldOut
+  };
+}
 // =========================
 // Initial Product Load
 // =========================
@@ -261,6 +297,10 @@ const alerts = loadAlerts();
     const channel = await client.channels.fetch(CHANNEL_ID);
 
     for (const product of products) {
+          const pageInfo = await getProductPageInfo(product.handle);
+
+    product.productPageFetched = pageInfo.productPageFetched;
+    product.explicitlySoldOut = pageInfo.explicitlySoldOut;
      
       const inStock =
 product.variants?.some(v => v.available);
@@ -272,8 +312,10 @@ savedProducts[product.id];
   const price =
 product.variants?.[0]?.price || "Unknown";
 
- if (
+if (
   !inStock &&
+  pageInfo.productPageFetched &&
+  !pageInfo.explicitlySoldOut &&
   !savedProducts[product.id]?.hiddenAlertSent
 ) {
 
