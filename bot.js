@@ -165,11 +165,12 @@ function addAlert(alertText) {
 
 async function getMattelData() {
   const allProducts = [];
+  const seenProductIds = new Set();
   let page = 1;
 
   while (true) {
     const response = await fetch(
-      `https://creations.mattel.com/products.json?page=${page}`
+      `https://creations.mattel.com/products.json?limit=250&page=${page}`
     );
 
     const text = await response.text();
@@ -196,12 +197,27 @@ async function getMattelData() {
       break;
     }
 
-    allProducts.push(...data.products);
+    for (const product of data.products) {
+      const productId = String(product.id);
 
-    console.log(`📄 Loaded page ${page}`);
+      if (seenProductIds.has(productId)) {
+        continue;
+      }
+
+      seenProductIds.add(productId);
+      allProducts.push(product);
+    }
+
+    console.log(
+      `📄 Loaded page ${page} (${data.products.length} products)`
+    );
 
     page++;
   }
+
+  console.log(
+    `📦 Mattel catalog collected: ${allProducts.length} unique products`
+  );
 
   return {
     products: allProducts
