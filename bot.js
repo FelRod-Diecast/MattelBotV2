@@ -8,26 +8,23 @@ const {
   ButtonBuilder,
   ButtonStyle
 } = require("discord.js");
-
 const fs = require("fs");
 const cron = require("node-cron");
 
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
-});
-
 const DATA_FILE = "./scanData.json";
-const CHANNEL_ID = process.env.CHANNEL_ID;
 const STATS_FILE = "./stats.json";
+const ALERTS_FILE = "./alerts.json";
+const WATCHLIST_FILE = "./watchlist.json";
+const CHANNEL_ID = process.env.CHANNEL_ID;
 
-const WATCHLIST = [
+const BLOCKED_HANDLES = new Set([
+  "red-line-club-exclusive-2025-hot-wheels-super-treasure-hunt-set-jcp51"
+]);
+
+const DEFAULT_WATCHLIST = [
   "silverado",
   "tahoe",
   "c10",
@@ -39,141 +36,332 @@ const WATCHLIST = [
   "boulevard"
 ];
 
-const WATCHLIST_FILE = "./watchlist.json";
-const ALERTS_FILE = "./alerts.json";
+const EXCLUDED_TERMS = [
+  "shirt",
+  "t-shirt",
+  "hoodie",
+  "sweatshirt",
+  "jacket",
+  "sweater",
+  "ugly sweater",
+  "crewneck",
+  "pullover",
+  "glass",
+  "mug",
+  "pin",
+  "poster",
+  "sticker",
+  "hat",
+  "dad hat",
+  "snapback",
+  "beanie",
+  "bag",
+  "backpack",
+  "wallet",
+  "lanyard",
+  "patch",
+  "tumbler",
+  "jersey",
+  "figure",
+  "mechanic",
+  "pants",
+  "shoe",
+  "shoes",
+  "sock",
+  "socks"
+];
 
-// Prevent overlapping scans.
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
+});
+
 let scanInProgress = false;
+let scannerStarted = false;
 
 // =========================
-// Product Filtering
+// JSON STORAGE
 // =========================
 
-function isHotWheelsProduct(product) {
-  const title = String(product?.title || "").toLowerCase();
-
-  return (
-    title.includes("hot wheels") &&
-    !title.includes("shirt") &&
-    !title.includes("t-shirt") &&
-    !title.includes("hat") &&
-    !title.includes("dad hat") &&
-    !title.includes("snapback") &&
-    !title.includes("tumbler") &&
-    !title.includes("sweatshirt") &&
-    !title.includes("raglan") &&
-    !title.includes("figure") &&
-    !title.includes("mechanic") &&
-    !title.includes("jersey")
-  );
-}
-
-function getPrice(product) {
-  return product?.variants?.[0]?.price || "Unknown";
-}
-
-function isInStock(product) {
-  return product?.variants?.some(v => v?.available === true) === true;
-}
-
-function getProductUrl(handle) {
-  return `https://creations.mattel.com/products/${handle}`;
-}
-
-// =========================
-// Product Storage
-// =========================
-
-function loadProducts() {
+function readJson(file, fallback) {
   try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+    return JSON.parse(
+      fs.readFileSync(file, "utf8")
+    );
   } catch {
-    return {};
+    return fallback;
   }
 }
 
-function saveProducts(data) {
+function writeJson(file, data) {
   fs.writeFileSync(
-    DATA_FILE,
+    file,
     JSON.stringify(data, null, 2)
   );
 }
 
+function loadProducts() {
+  return readJson(DATA_FILE, {});
+}
+
+function saveProducts(data) {
+  writeJson(DATA_FILE, data);
+}
+
 function loadStats() {
-  try {
-    return JSON.parse(
-      fs.readFileSync(STATS_FILE, "utf8")
-    );
-  } catch {
-    return {
-      newProductsToday: 0,
-      restocksToday: 0,
-      soldOutToday: 0
-    };
-  }
+  return readJson(STATS_FILE, {
+    newProductsToday: 0,
+    restocksToday: 0,
+    soldOutToday: 0,
+    priceChangesToday: 0,
+    lastScanAt: null
+  });
 }
 
 function saveStats(stats) {
-  fs.writeFileSync(
-    STATS_FILE,
-    JSON.stringify(stats, null, 2)
-  );
+  writeJson(STATS_FILE, stats);
 }
 
 function loadAlerts() {
-  try {
-    return JSON.parse(
-      fs.readFileSync(ALERTS_FILE, "utf8")
-    );
-  } catch {
-    return [];
-  }
+  return readJson(ALERTS_FILE, []);
 }
 
 function saveAlerts(alerts) {
-  fs.writeFileSync(
+  writeJson(
     ALERTS_FILE,
-    JSON.stringify(alerts, null, 2)
+    alerts.slice(0, 25)
   );
 }
 
 function loadWatchlist() {
+  return readJson(
+    WATCHLIST_FILE,
+    DEFAULT_WATCHLIST
+  );
+}
+
+function saveWatchlist(list) {
+  writeJson(
+    WATCHLIST_FILE,
+    list
+  );
+}
+
+// =========================
+// HOT WHEELS FILTER
+// =========================
+
+function isHotWheelsProduct(product) {
+  const title =
+    String(product?.title || "")
+      .toLowerCase()
+      .trim();
+
+  if (!title) {
+    return false;
+  }
+
+  if (
+    EXCLUDED_TERMS.some(term =>
+      title.includes(term)
+    )
+  ) {
+    return false;
+  }
+
+  return (
+    title.includes("hot wheels") ||
+    title.includes("rlc") ||
+    title.includes("red line club") ||
+    title.includes("elite 64")
+  );
+}
+
+// =========================
+// PRODUCT HELPERS
+// =========================
+
+function productUrl(handle) {
+  return `https://creations.mattel.com/products/${handle}`;
+}
+
+function getPrice(product) {
+  const variant =
+    product?.variants?.find(v => v.available) ||
+    product?.variants?.[0];
+
+  return variant?.price || null;
+}
+
+function getAvailable(product) {
+  return Boolean(
+    product?.variants?.some(v => v.available)
+  );
+}
+
+function getVariantId(product) {
+  const variant =
+    product?.variants?.find(v => v.available) ||
+    product?.variants?.[0];
+
+  return variant?.id || null;
+}
+
+function getImage(product) {
+  return product?.images?.[0]?.src || null;
+}
+
+function getCatalogCreatedAt(product) {
+  return (
+    product?.created_at ||
+    product?.createdAt ||
+    null
+  );
+}
+
+function getPublishedAt(product) {
+  return (
+    product?.published_at ||
+    product?.publishedAt ||
+    null
+  );
+}
+
+// =========================
+// LAUNCH DETECTION
+// =========================
+
+function getLaunchInfoFromHtml(html) {
+  const match = String(html || "").match(
+    /Launches\s+([A-Za-z]+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}\s*(?:am|pm)\s*PT)/i
+  );
+
+  if (!match) {
+    return {
+      upcoming: false,
+      launchDate: null
+    };
+  }
+
+  const parsed =
+    new Date(match[1]);
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    return {
+      upcoming: false,
+      launchDate: match[1]
+    };
+  }
+
+  return {
+    upcoming:
+      parsed.getTime() > Date.now(),
+
+    launchDate:
+      match[1]
+  };
+}
+
+// =========================
+// PRODUCT PAGE VERIFICATION
+// =========================
+
+async function fetchProductPageInfo(
+  handle,
+  shouldCheckLaunch
+) {
+  const url =
+    productUrl(handle);
+
   try {
-    return JSON.parse(
-      fs.readFileSync(
-        WATCHLIST_FILE,
-        "utf8"
-      )
+    const response =
+      await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36"
+        }
+      });
+
+    if (!response.ok) {
+      return {
+        productPageFetched: false,
+        explicitlySoldOut: false,
+        upcoming: false,
+        launchDate: null
+      };
+    }
+
+    const html =
+      await response.text();
+
+    const lower =
+      html.toLowerCase();
+
+    const explicitlySoldOut =
+      lower.includes("sold out") ||
+      lower.includes("out of stock") ||
+      lower.includes("unavailable");
+
+    const launchInfo =
+      shouldCheckLaunch
+        ? getLaunchInfoFromHtml(html)
+        : {
+            upcoming: false,
+            launchDate: null
+          };
+
+    return {
+      productPageFetched: true,
+      explicitlySoldOut,
+      upcoming:
+        launchInfo.upcoming,
+      launchDate:
+        launchInfo.launchDate
+    };
+
+  } catch (error) {
+
+    console.error(
+      `⚠️ Product page check failed: ${handle}`,
+      error.message
     );
-  } catch {
-    return [...WATCHLIST];
+
+    return {
+      productPageFetched: false,
+      explicitlySoldOut: false,
+      upcoming: false,
+      launchDate: null
+    };
   }
 }
 
-function addAlert(alertText) {
-  const alerts = loadAlerts();
-
-  alerts.unshift(alertText);
-  alerts.splice(10);
-
-  saveAlerts(alerts);
-}
-
 // =========================
-// Mattel API
+// MATTEL CATALOG
 // =========================
 
-async function getMattelData() {
+async function getMattelProducts() {
+
   const allProducts = [];
-  const seenProductIds = new Set();
+  const seenIds = new Set();
+
   let page = 1;
 
   while (true) {
-    const response = await fetch(
-      `https://creations.mattel.com/products.json?limit=250&page=${page}`
-    );
 
-    const text = await response.text();
+    const response =
+      await fetch(
+        `https://creations.mattel.com/products.json?limit=250&page=${page}`
+      );
+
+    const text =
+      await response.text();
 
     if (
       text.startsWith("<!DOCTYPE") ||
@@ -185,26 +373,35 @@ async function getMattelData() {
     let data;
 
     try {
-      data = JSON.parse(text);
+      data =
+        JSON.parse(text);
     } catch {
       break;
     }
 
     if (
-      !data.products ||
+      !Array.isArray(
+        data.products
+      ) ||
       data.products.length === 0
     ) {
       break;
     }
 
-    for (const product of data.products) {
-      const productId = String(product.id);
+    for (
+      const product of data.products
+    ) {
 
-      if (seenProductIds.has(productId)) {
+      const id =
+        String(product.id);
+
+      if (
+        seenIds.has(id)
+      ) {
         continue;
       }
 
-      seenProductIds.add(productId);
+      seenIds.add(id);
       allProducts.push(product);
     }
 
@@ -219,148 +416,392 @@ async function getMattelData() {
     `📦 Mattel catalog collected: ${allProducts.length} unique products`
   );
 
-  return {
-    products: allProducts
-  };
+  return allProducts;
 }
 
 // =========================
-// Product Page Verification
+// DISCORD EMBEDS
 // =========================
 
-async function getProductPageInfo(handle) {
-  const productUrl = getProductUrl(handle);
+function makeEmbed(
+  title,
+  color,
+  product,
+  fields
+) {
 
-  let html = "";
-  let productPageFetched = false;
-
-  try {
-    const response = await fetch(productUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36"
-      }
-    });
-
-    if (response.ok) {
-      html = await response.text();
-      productPageFetched = true;
-    }
-  } catch (error) {
-    console.error(
-      `⚠️ Product page check failed: ${handle}`,
-      error.message
-    );
-  }
-
-  const pageTextLower =
-    html.toLowerCase();
-
-  const explicitlySoldOut =
-    pageTextLower.includes("sold out") ||
-    pageTextLower.includes("out of stock") ||
-    pageTextLower.includes("unavailable");
-
-  return {
-    productPageFetched,
-    explicitlySoldOut
-  };
-}
-
-// =========================
-// Initial Product Load
-// =========================
-
-async function initializeProducts() {
-  try {
-    const data = await getMattelData();
-
-    const products =
-      data.products.filter(isHotWheelsProduct);
-
-    const savedProducts =
-      loadProducts();
-
-    const stats =
-      loadStats();
-
-    if (
-      Object.keys(savedProducts).length === 0
-    ) {
-      products.forEach(product => {
-        const inStock =
-          isInStock(product);
-
-        const price =
-          getPrice(product);
-
-        savedProducts[product.id] = {
-          title: product.title,
-          handle: product.handle,
-          available: inStock,
-          price: price,
-          detectedAt:
-            new Date().toISOString(),
-          lastSeen:
-            new Date().toISOString(),
-          watchlistAlertSent: false,
-          hiddenAlertSent: false,
-          wasHidden: false,
-
-          stats: {
-            restockEvents: 0,
-            soldOutEvents: 0,
-            restockTimestamps: []
-          },
-
-          predictionAlertSent: false,
-          etaAlertSent: false
-        };
+  const embed =
+    new EmbedBuilder()
+      .setColor(color)
+      .setTitle(title)
+      .setURL(product.url)
+      .addFields(fields)
+      .setFooter({
+        text: "MattelBotV2"
       });
 
-      saveProducts(savedProducts);
-      saveStats(stats);
-
-      console.log(
-        `✅ Initialized ${products.length} products`
-      );
-    } else {
-      console.log(
-        `📦 Existing product database found: ${Object.keys(savedProducts).length} products`
-      );
-    }
-  } catch (error) {
-    console.error(
-      "❌ Product initialization failed"
+  if (product.image) {
+    embed.setThumbnail(
+      product.image
     );
-    console.error(error);
   }
+
+  return embed;
+}
+
+function cartRow(
+  variantId
+) {
+
+  if (!variantId) {
+    return null;
+  }
+
+  return new ActionRowBuilder()
+    .addComponents(
+
+      new ButtonBuilder()
+        .setLabel("🛒 QTY 2")
+        .setStyle(ButtonStyle.Link)
+        .setURL(
+          `https://creations.mattel.com/cart/${variantId}:2`
+        ),
+
+      new ButtonBuilder()
+        .setLabel("🛒 QTY 10")
+        .setStyle(ButtonStyle.Link)
+        .setURL(
+          `https://creations.mattel.com/cart/${variantId}:10`
+        ),
+
+      new ButtonBuilder()
+        .setLabel("🛒 QTY 20")
+        .setStyle(ButtonStyle.Link)
+        .setURL(
+          `https://creations.mattel.com/cart/${variantId}:20`
+        ),
+
+      new ButtonBuilder()
+        .setLabel("🛒 QTY 50")
+        .setStyle(ButtonStyle.Link)
+        .setURL(
+          `https://creations.mattel.com/cart/${variantId}:50`
+        )
+    );
+}
+
+async function sendToChannel(
+  channel,
+  embed,
+  row = null
+) {
+
+  const payload = {
+    embeds: [embed]
+  };
+
+  if (row) {
+    payload.components = [row];
+  }
+
+  await channel.send(
+    payload
+  );
+}
+
+function addAlert(
+  alerts,
+  text
+) {
+
+  alerts.unshift(text);
+
+  saveAlerts(
+    alerts
+  );
 }
 
 // =========================
-// Scanner
+// PRODUCT RECORD
+// =========================
+
+function ensureRecord(
+  existing,
+  product,
+  now
+) {
+
+  const price =
+    getPrice(product);
+
+  const available =
+    getAvailable(product);
+
+  const createdAt =
+    getCatalogCreatedAt(product);
+
+  const publishedAt =
+    getPublishedAt(product);
+
+  if (existing) {
+
+    existing.title =
+      product.title;
+
+    existing.handle =
+      product.handle;
+
+    existing.price =
+      price;
+
+    existing.available =
+      available;
+
+    existing.lastSeen =
+      now;
+
+    existing.catalogCreatedAt =
+      createdAt ||
+      existing.catalogCreatedAt ||
+      null;
+
+    existing.publishedAt =
+      publishedAt ||
+      existing.publishedAt ||
+      null;
+
+    existing.url =
+      productUrl(
+        product.handle
+      );
+
+    existing.variantId =
+      getVariantId(product);
+
+    existing.image =
+      getImage(product);
+
+    existing.upcoming =
+      product.upcoming ||
+      false;
+
+    existing.launchDate =
+      product.launchDate ||
+      null;
+
+    existing.productPageFetched =
+      product.productPageFetched ||
+      false;
+
+    existing.explicitlySoldOut =
+      product.explicitlySoldOut ||
+      false;
+
+    existing.wasHidden =
+      existing.wasHidden === true;
+
+    existing.hiddenAlertSent =
+      existing.hiddenAlertSent === true;
+
+    existing.upcomingAlertSent =
+      existing.upcomingAlertSent === true;
+
+    existing.stats =
+      existing.stats || {
+        restockEvents: 0,
+        soldOutEvents: 0,
+        restockTimestamps: []
+      };
+
+    existing.stats.restockTimestamps =
+      existing.stats.restockTimestamps ||
+      [];
+
+    return existing;
+  }
+
+  return {
+
+    title:
+      product.title,
+
+    handle:
+      product.handle,
+
+    available,
+
+    price,
+
+    previousPrice:
+      null,
+
+    detectedAt:
+      now,
+
+    firstSeen:
+      now,
+
+    lastSeen:
+      now,
+
+    catalogCreatedAt:
+      createdAt,
+
+    publishedAt,
+
+    url:
+      productUrl(
+        product.handle
+      ),
+
+    variantId:
+      getVariantId(product),
+
+    image:
+      getImage(product),
+
+    upcoming:
+      product.upcoming ||
+      false,
+
+    launchDate:
+      product.launchDate ||
+      null,
+
+    productPageFetched:
+      product.productPageFetched ||
+      false,
+
+    explicitlySoldOut:
+      product.explicitlySoldOut ||
+      false,
+
+    wasHidden:
+      false,
+
+    hiddenAlertSent:
+      false,
+
+    upcomingAlertSent:
+      false,
+
+    predictionAlertSent:
+      false,
+
+    etaAlertSent:
+      false,
+
+    stats: {
+      restockEvents: 0,
+      soldOutEvents: 0,
+      restockTimestamps: []
+    }
+  };
+}
+
+// =========================
+// REAL NEW PRODUCT TEST
+// =========================
+
+function isActuallyNewProduct(
+  product,
+  previous,
+  lastScanAt
+) {
+
+  if (previous) {
+    return false;
+  }
+
+  const createdAt =
+    getCatalogCreatedAt(
+      product
+    );
+
+  if (!createdAt) {
+    return false;
+  }
+
+  if (!lastScanAt) {
+    return false;
+  }
+
+  const created =
+    Date.parse(
+      createdAt
+    );
+
+  const lastScan =
+    Date.parse(
+      lastScanAt
+    );
+
+  if (
+    Number.isNaN(created) ||
+    Number.isNaN(lastScan)
+  ) {
+    return false;
+  }
+
+  return (
+    created >
+    lastScan
+  );
+}
+
+// =========================
+// MAIN SCANNER
 // =========================
 
 async function scanForNewProducts() {
+
   if (scanInProgress) {
+
     console.log(
-      "⏳ Scan already in progress - skipping overlapping scan"
+      "⏭️ Scan skipped because another scan is already running."
     );
+
     return;
   }
 
-  scanInProgress = true;
+  scanInProgress =
+    true;
+
+  const scanStartedAt =
+    new Date().toISOString();
 
   try {
+
     console.log(
       "🔎 Starting Mattel product scan..."
     );
 
-    const data =
-      await getMattelData();
+    if (!CHANNEL_ID) {
 
-    const products =
-      data.products.filter(isHotWheelsProduct);
+      console.log(
+        "⚠️ CHANNEL_ID not configured"
+      );
+
+      return;
+    }
+
+    const channel =
+      await client.channels.fetch(
+        CHANNEL_ID
+      );
+
+    const catalog =
+      await getMattelProducts();
+
+    const candidates =
+      catalog.filter(product =>
+        !BLOCKED_HANDLES.has(
+          product.handle
+        ) &&
+        isHotWheelsProduct(
+          product
+        )
+      );
 
     const savedProducts =
       loadProducts();
@@ -368,92 +809,233 @@ async function scanForNewProducts() {
     const stats =
       loadStats();
 
-    if (!CHANNEL_ID) {
-      console.log(
-        "⚠️ CHANNEL_ID not configured"
-      );
-      return;
-    }
-
-    const channel =
-      await client.channels.fetch(CHANNEL_ID);
-
-    if (!channel) {
-      console.log(
-        "❌ Discord channel could not be found"
-      );
-      return;
-    }
+    const alerts =
+      loadAlerts();
 
     const watchlist =
       loadWatchlist();
 
-    for (const product of products) {
-      try {
-        const productId =
-          String(product.id);
+    const previousLastScanAt =
+      stats.lastScanAt;
 
-        const existingProduct =
-          savedProducts[productId];
+    const now =
+      scanStartedAt;
 
-        const inStock =
-          isInStock(product);
+    console.log(
+      `🎯 Hot Wheels candidates: ${candidates.length}`
+    );
 
-        const price =
-          getPrice(product);
+    const processed = [];
 
-        // ==========================================
-        // New Product
-        // ==========================================
+    for (
+      const raw of candidates
+    ) {
 
-        if (!existingProduct) {
-          const pageInfo =
-            await getProductPageInfo(
-              product.handle
-            );
+      const existing =
+        savedProducts[
+          String(raw.id)
+        ];
 
-          product.productPageFetched =
-            pageInfo.productPageFetched;
+      const available =
+        getAvailable(raw);
 
-          product.explicitlySoldOut =
-            pageInfo.explicitlySoldOut;
+      const titleLower =
+        String(
+          raw.title || ""
+        ).toLowerCase();
 
-          /*
-           * IMPORTANT:
-           *
-           * A new product that is unavailable from
-           * the API is NOT automatically considered
-           * hidden.
-           *
-           * It becomes a hidden opportunity only when:
-           *
-           * 1. API says unavailable
-           * 2. Product page was successfully fetched
-           * 3. Product page does NOT explicitly say
-           *    sold out / out of stock / unavailable
-           */
+      const shouldCheckLaunch =
+        titleLower.includes("rlc") ||
+        titleLower.includes("red line club") ||
+        titleLower.includes("elite 64") ||
+        titleLower.includes("transformers");
 
-          const isHiddenOpportunity =
-            inStock === false &&
-            pageInfo.productPageFetched === true &&
-            pageInfo.explicitlySoldOut === false;
+      let pageInfo = {
+        productPageFetched: false,
+        explicitlySoldOut: false,
+        upcoming: false,
+        launchDate: null
+      };
 
-          if (isHiddenOpportunity) {
-            const embed =
-              new EmbedBuilder()
-                .setColor(0xffcc00)
-                .setTitle(
-                  "🚨 POSSIBLE HIDDEN PRODUCT DETECTED"
-                )
-                .addFields(
+      if (
+        !available ||
+        shouldCheckLaunch
+      ) {
+
+        pageInfo =
+          await fetchProductPageInfo(
+            raw.handle,
+            shouldCheckLaunch
+          );
+      }
+
+      const product = {
+
+        id:
+          raw.id,
+
+        title:
+          raw.title,
+
+        handle:
+          raw.handle,
+
+        available,
+
+        price:
+          getPrice(raw),
+
+        variantId:
+          getVariantId(raw),
+
+        image:
+          getImage(raw),
+
+        url:
+          productUrl(
+            raw.handle
+          ),
+
+        catalogCreatedAt:
+          getCatalogCreatedAt(
+            raw
+          ),
+
+        publishedAt:
+          getPublishedAt(
+            raw
+          ),
+
+        ...pageInfo
+      };
+
+      const wasActuallyNew =
+        isActuallyNewProduct(
+          raw,
+          existing,
+          previousLastScanAt
+        );
+
+      const record =
+        ensureRecord(
+          existing,
+          product,
+          now
+        );
+
+      // =========================
+      // NEW PRODUCT
+      // =========================
+
+      if (!existing) {
+
+        if (wasActuallyNew) {
+
+          stats.newProductsToday++;
+
+          addAlert(
+            alerts,
+            `🆕 ${product.title}`
+          );
+
+          if (
+            product.upcoming
+          ) {
+
+            await sendToChannel(
+              channel,
+
+              makeEmbed(
+                "🚀 UPCOMING LAUNCH",
+                0xffa500,
+                product,
+                [
                   {
                     name: "📦 Product",
-                    value: product.title
+                    value:
+                      product.title
+                  },
+                  {
+                    name: "🚀 Launch Date",
+                    value:
+                      product.launchDate ||
+                      "Mattel Launch Scheduled",
+                    inline: true
                   },
                   {
                     name: "💲 Price",
-                    value: `$${price}`,
+                    value:
+                      `$${product.price || "Unknown"}`,
                     inline: true
+                  }
+                ]
+              )
+            );
+
+            record.upcomingAlertSent =
+              true;
+
+          } else if (
+            product.available
+          ) {
+
+            await sendToChannel(
+              channel,
+
+              makeEmbed(
+                "🆕 NEW HOT WHEELS PRODUCT",
+                0x3498db,
+                product,
+                [
+                  {
+                    name: "📦 Product",
+                    value:
+                      product.title
+                  },
+                  {
+                    name: "💲 Price",
+                    value:
+                      `$${product.price || "Unknown"}`,
+                    inline: true
+                  },
+                  {
+                    name: "✅ Status",
+                    value:
+                      "IN STOCK",
+                    inline: true
+                  }
+                ]
+              ),
+
+              cartRow(
+                product.variantId
+              )
+            );
+
+          } else if (
+            product.productPageFetched &&
+            !product.explicitlySoldOut &&
+            !product.launchDate
+          ) {
+
+            record.wasHidden =
+              true;
+
+            record.hiddenAlertSent =
+              true;
+
+            await sendToChannel(
+              channel,
+
+              makeEmbed(
+                "🚨 POSSIBLE HIDDEN PRODUCT DETECTED",
+                0xffcc00,
+                product,
+                [
+                  {
+                    name: "📦 Product",
+                    value:
+                      product.title
                   },
                   {
                     name: "👀 Status",
@@ -462,559 +1044,395 @@ async function scanForNewProducts() {
                     inline: true
                   },
                   {
-                    name: "⏰ First Seen",
-                    value:
-                      new Date().toLocaleString(),
-                    inline: true
-                  }
-                )
-                .setURL(
-                  getProductUrl(
-                    product.handle
-                  )
-                )
-                .setThumbnail(
-                  product.images?.[0]?.src ||
-                  null
-                )
-                .setFooter({
-                  text: "MattelBotV2"
-                });
-
-            const row =
-              new ActionRowBuilder()
-                .addComponents(
-                  new ButtonBuilder()
-                    .setLabel(
-                      "🛒 View Product"
-                    )
-                    .setStyle(
-                      ButtonStyle.Link
-                    )
-                    .setURL(
-                      getProductUrl(
-                        product.handle
-                      )
-                    )
-                );
-
-            await channel.send({
-              embeds: [embed],
-              components: [row]
-            });
-
-            console.log(
-              `🚨 Hidden Opportunity: ${product.title}`
-            );
-          } else {
-            /*
-             * New product is either:
-             * - currently in stock
-             * - explicitly sold out
-             * - unavailable for another reason
-             *
-             * Do not falsely label it as a hidden
-             * opportunity.
-             */
-
-            const embed =
-              new EmbedBuilder()
-                .setColor(
-                  inStock
-                    ? 0x00ff00
-                    : 0x808080
-                )
-                .setTitle(
-                  inStock
-                    ? "🚨 NEW HOT WHEELS DETECTED"
-                    : "📦 NEW HOT WHEELS PRODUCT"
-                )
-                .addFields(
-                  {
-                    name: "📦 Product",
-                    value: product.title
-                  },
-                  {
                     name: "💲 Price",
-                    value: `$${price}`,
+                    value:
+                      `$${product.price || "Unknown"}`,
                     inline: true
                   },
                   {
-                    name: "👀 Status",
-                    value: inStock
-                      ? "IN STOCK"
-                      : pageInfo.explicitlySoldOut
-                        ? "SOLD OUT"
-                        : "NOT AVAILABLE",
-                    inline: true
+                    name: "📅 Mattel Created",
+                    value:
+                      product.catalogCreatedAt ||
+                      "Unknown"
                   }
-                )
-                .setURL(
-                  getProductUrl(
-                    product.handle
-                  )
-                )
-                .setThumbnail(
-                  product.images?.[0]?.src ||
-                  null
-                )
-                .setFooter({
-                  text: "MattelBotV2"
-                });
-
-            await channel.send({
-              embeds: [embed]
-            });
-          }
-
-          savedProducts[productId] = {
-            title: product.title,
-            handle: product.handle,
-            available: inStock,
-            price: price,
-            detectedAt:
-              new Date().toISOString(),
-            lastSeen:
-              new Date().toISOString(),
-            watchlistAlertSent: false,
-            hiddenAlertSent:
-              isHiddenOpportunity,
-            wasHidden:
-              isHiddenOpportunity,
-
-            stats: {
-              restockEvents: 0,
-              soldOutEvents: 0,
-              restockTimestamps: []
-            },
-
-            predictionAlertSent: false,
-            etaAlertSent: false
-          };
-
-          addAlert(
-            `🆕 ${product.title}`
-          );
-
-          const matchedKeyword =
-            watchlist.find(keyword =>
-              product.title
-                .toLowerCase()
-                .includes(
-                  keyword.toLowerCase()
-                )
-            );
-
-          if (
-            matchedKeyword &&
-            inStock === true
-          ) {
-            await channel.send(
-              `🚨 WATCHLIST MATCH 🚨\n\n` +
-              `📦 ${product.title}\n` +
-              `🔑 Keyword: ${matchedKeyword}\n` +
-              `✅ IN STOCK\n` +
-              `🔗 ${getProductUrl(product.handle)}`
+                ]
+              )
             );
           }
 
-          stats.newProductsToday++;
+        } else {
 
           console.log(
-            `🆕 New Product Found: ${product.title}`
+            `ℹ️ Baseline/previously missed product added without alert: ${product.title}`
+          );
+        }
+
+      } else {
+
+        // =========================
+        // RESTOCK
+        // =========================
+
+        if (
+          existing.available === false &&
+          product.available === true
+        ) {
+
+          record.stats.restockEvents++;
+
+          record.stats.restockTimestamps.push(
+            Date.now()
           );
 
-          continue;
-        }
+          record.wasHidden =
+            false;
 
-        // ==========================================
-        // Existing Product
-        // ==========================================
+          record.hiddenAlertSent =
+            false;
 
-        if (!existingProduct.stats) {
-          existingProduct.stats = {
-            restockEvents: 0,
-            soldOutEvents: 0,
-            restockTimestamps: []
-          };
-        }
+          record.predictionAlertSent =
+            false;
 
-        if (
-          !Array.isArray(
-            existingProduct.stats
-              .restockTimestamps
-          )
-        ) {
-          existingProduct.stats
-            .restockTimestamps = [];
-        }
+          record.etaAlertSent =
+            false;
 
-        if (
-          existingProduct
-            .predictionAlertSent ===
-          undefined
-        ) {
-          existingProduct
-            .predictionAlertSent = false;
-        }
+          stats.restocksToday++;
 
-        if (
-          existingProduct
-            .etaAlertSent ===
-          undefined
-        ) {
-          existingProduct
-            .etaAlertSent = false;
-        }
+          addAlert(
+            alerts,
+            `🔥 ${product.title}`
+          );
 
-        // ==========================================
-        // Restock Detection
-        // ==========================================
+          await sendToChannel(
+            channel,
 
-        if (
-          existingProduct.available === false &&
-          inStock === true
-        ) {
-          const wasHidden =
-            existingProduct.wasHidden === true;
+            makeEmbed(
+              existing.wasHidden
+                ? "🚨 HIDDEN PRODUCT IS NOW LIVE"
+                : "🔥 BACK IN STOCK",
 
-          const embed =
-            new EmbedBuilder()
-              .setColor(0x0099ff)
-              .setTitle(
-                wasHidden
-                  ? "🚨 HIDDEN PRODUCT IS NOW LIVE"
-                  : "🔥 BACK IN STOCK"
-              )
-              .addFields(
+              0x0099ff,
+
+              product,
+
+              [
                 {
                   name: "📦 Product",
-                  value: product.title
+                  value:
+                    product.title
                 },
                 {
-                  name: "✅ Status",
-                  value: "BACK IN STOCK",
+                  name: "💲 Price",
+                  value:
+                    `$${product.price || "Unknown"}`,
                   inline: true
                 },
                 {
                   name: "📈 Lifetime Restocks",
-                  value: String(
-                    (existingProduct
-                      .stats
-                      .restockEvents ||
-                      0) + 1
-                  ),
-                  inline: true
-                },
-                {
-                  name: "⏰ First Seen",
                   value:
-                    new Date(
-                      existingProduct
-                        .detectedAt
-                    ).toLocaleDateString(),
+                    String(
+                      record.stats.restockEvents
+                    ),
                   inline: true
                 }
-              )
-              .setURL(
-                getProductUrl(
-                  product.handle
-                )
-              )
-              .setThumbnail(
-                product.images?.[0]?.src ||
-                null
-              )
-              .setFooter({
-                text: "MattelBotV2"
-              });
+              ]
+            ),
 
-          await channel.send({
-            embeds: [embed]
-          });
-
-          const matchedKeyword =
-            watchlist.find(keyword =>
-              product.title
-                .toLowerCase()
-                .includes(
-                  keyword.toLowerCase()
-                )
-            );
-
-          if (matchedKeyword) {
-            await channel.send(
-              "🚨 WATCHLIST RESTOCK 🚨\n\n" +
-              `📦 ${product.title}\n` +
-              `🔑 Keyword: ${matchedKeyword}\n` +
-              `✅ Back In Stock\n` +
-              `🔗 ${getProductUrl(product.handle)}`
-            );
-          }
-
-          addAlert(
-            `🔥 ${product.title}`
-          );
-
-          existingProduct
-            .stats
-            .restockEvents++;
-
-          const totalRestocks =
-            existingProduct
-              .stats
-              .restockEvents;
-
-          if (
-            totalRestocks === 3 ||
-            totalRestocks === 5 ||
-            totalRestocks === 10
-          ) {
-            await channel.send(
-              "🔥 HOT PRODUCT ALERT 🔥\n\n" +
-              `📦 ${product.title}\n` +
-              `📈 Restocks Seen: ${totalRestocks}\n` +
-              "🚀 High Activity Product\n" +
-              `🔗 ${getProductUrl(product.handle)}`
-            );
-          }
-
-          existingProduct
-            .stats
-            .restockTimestamps
-            .push(Date.now());
-
-          existingProduct
-            .predictionAlertSent = false;
-
-          existingProduct
-            .etaAlertSent = false;
-
-          /*
-           * Once a hidden product becomes live,
-           * it is no longer hidden.
-           */
-          existingProduct.wasHidden = false;
-          existingProduct.hiddenAlertSent = true;
-
-          stats.restocksToday++;
-
-          console.log(
-            `🔥 Restock Detected: ${product.title}`
+            cartRow(
+              product.variantId
+            )
           );
         }
 
-        // ==========================================
-        // Sold Out Detection
-        // ==========================================
+        // =========================
+        // SOLD OUT
+        // =========================
 
         if (
-          existingProduct.available === true &&
-          inStock === false
+          existing.available === true &&
+          product.available === false
         ) {
-          const pageInfo =
-            await getProductPageInfo(
-              product.handle
-            );
 
-          const embed =
-            new EmbedBuilder()
-              .setColor(0xff0000)
-              .setTitle(
-                "❌ SOLD OUT"
-              )
-              .addFields(
-                {
-                  name: "📦 Product",
-                  value: product.title
-                },
-                {
-                  name: "❌ Status",
-                  value: "SOLD OUT",
-                  inline: true
-                }
-              )
-              .setURL(
-                getProductUrl(
-                  product.handle
-                )
-              )
-              .setThumbnail(
-                product.images?.[0]?.src ||
-                null
-              )
-              .setFooter({
-                text: "MattelBotV2"
-              });
-
-          await channel.send({
-            embeds: [embed]
-          });
-
-          addAlert(
-            `❌ ${product.title}`
-          );
-
-          existingProduct
-            .stats
-            .soldOutEvents++;
+          record.stats.soldOutEvents++;
 
           stats.soldOutToday++;
 
-          console.log(
-            `❌ Sold Out: ${product.title}`
+          addAlert(
+            alerts,
+            `❌ ${product.title}`
           );
 
-          /*
-           * If the page is successfully checked and
-           * does NOT explicitly say sold out, retain
-           * the hidden/opportunity state.
-           *
-           * This protects against a temporary API
-           * inventory mismatch.
-           */
-          if (
-            pageInfo.productPageFetched === true &&
-            pageInfo.explicitlySoldOut === false
-          ) {
-            existingProduct.wasHidden = true;
-            existingProduct.hiddenAlertSent = true;
+          await sendToChannel(
+            channel,
 
-            console.log(
-              `🕵️ Product may be hidden/unreleased: ${product.title}`
-            );
-          } else {
-            existingProduct.wasHidden = false;
-          }
-        }
-
-        // ==========================================
-        // Price Change
-        // ==========================================
-
-        const currentPrice =
-          getPrice(product);
-
-        if (
-          existingProduct.price &&
-          existingProduct.price !==
-            currentPrice
-        ) {
-          const embed =
-            new EmbedBuilder()
-              .setColor(0x9932cc)
-              .setTitle(
-                "💲 PRICE CHANGE DETECTED"
-              )
-              .addFields(
+            makeEmbed(
+              "❌ SOLD OUT",
+              0xff0000,
+              product,
+              [
                 {
                   name: "📦 Product",
-                  value: product.title
+                  value:
+                    product.title
+                },
+                {
+                  name: "❌ Status",
+                  value:
+                    "SOLD OUT",
+                  inline: true
+                }
+              ]
+            )
+          );
+        }
+
+        // =========================
+        // PRICE CHANGE
+        // =========================
+
+        if (
+          existing.price &&
+          product.price &&
+          existing.price !==
+            product.price
+        ) {
+
+          stats.priceChangesToday++;
+
+          addAlert(
+            alerts,
+            `💲 ${product.title}`
+          );
+
+          await sendToChannel(
+            channel,
+
+            makeEmbed(
+              "💲 PRICE CHANGE DETECTED",
+              0x9932cc,
+              product,
+              [
+                {
+                  name: "📦 Product",
+                  value:
+                    product.title
                 },
                 {
                   name: "⬇️ Old Price",
                   value:
-                    `$${existingProduct.price}`,
+                    `$${existing.price}`,
                   inline: true
                 },
                 {
                   name: "⬆️ New Price",
                   value:
-                    `$${currentPrice}`,
+                    `$${product.price}`,
                   inline: true
                 }
-              )
-              .setURL(
-                getProductUrl(
-                  product.handle
-                )
-              )
-              .setThumbnail(
-                product.images?.[0]?.src ||
-                null
-              )
-              .setFooter({
-                text: "MattelBotV2"
-              });
-
-          addAlert(
-            `💲 ${product.title}`
-          );
-
-          await channel.send({
-            embeds: [embed]
-          });
-
-          console.log(
-            `💲 Price Changed: ${product.title}`
+              ]
+            )
           );
         }
 
-        // ==========================================
-        // Save Current State
-        // ==========================================
+        // =========================
+        // HIDDEN OPPORTUNITY
+        // =========================
 
-        existingProduct.title =
-          product.title;
+        if (
+          product.available === false &&
+          product.productPageFetched &&
+          !product.explicitlySoldOut &&
+          !product.launchDate
+        ) {
 
-        existingProduct.handle =
-          product.handle;
+          record.wasHidden =
+            true;
 
-        existingProduct.price =
-          currentPrice;
+          if (
+            !record.hiddenAlertSent &&
+            previousLastScanAt
+          ) {
 
-        existingProduct.available =
-          inStock;
+            record.hiddenAlertSent =
+              true;
 
-        existingProduct.lastSeen =
-          new Date().toISOString();
-      } catch (productError) {
-        console.error(
-          `⚠️ Product processing failed: ${product.title}`,
-          productError.message
+            await sendToChannel(
+              channel,
+
+              makeEmbed(
+                "🚨 POSSIBLE HIDDEN PRODUCT",
+                0xffcc00,
+                product,
+                [
+                  {
+                    name: "📦 Product",
+                    value:
+                      product.title
+                  },
+                  {
+                    name: "👀 Status",
+                    value:
+                      "NOT AVAILABLE YET",
+                    inline: true
+                  },
+                  {
+                    name: "💲 Price",
+                    value:
+                      `$${product.price || "Unknown"}`,
+                    inline: true
+                  }
+                ]
+              )
+            );
+          }
+        }
+      }
+
+      // =========================
+      // WATCHLIST
+      // =========================
+
+      const watchMatch =
+        watchlist.find(keyword =>
+          product.title
+            .toLowerCase()
+            .includes(
+              String(keyword)
+                .toLowerCase()
+            )
+        );
+
+      if (
+        watchMatch &&
+        product.available &&
+        (
+          !existing ||
+          existing.available === false
+        )
+      ) {
+
+        await sendToChannel(
+          channel,
+
+          makeEmbed(
+            "🚨 WATCHLIST MATCH",
+            0xff0000,
+            product,
+            [
+              {
+                name: "📦 Product",
+                value:
+                  product.title
+              },
+              {
+                name: "🎯 Watchlist Keyword",
+                value:
+                  watchMatch,
+                inline: true
+              },
+              {
+                name: "💲 Price",
+                value:
+                  `$${product.price || "Unknown"}`,
+                inline: true
+              }
+            ]
+          ),
+
+          cartRow(
+            product.variantId
+          )
         );
       }
+
+      savedProducts[
+        String(raw.id)
+      ] = record;
+
+      processed.push(
+        String(raw.id)
+      );
     }
 
-    saveProducts(savedProducts);
-    saveStats(stats);
+    stats.lastScanAt =
+      scanStartedAt;
+
+    saveProducts(
+      savedProducts
+    );
+
+    saveStats(
+      stats
+    );
+
+    saveAlerts(
+      alerts
+    );
 
     console.log(
-      `⏰ Scan Complete - ${products.length} products checked`
+      `⏰ Scan Complete - ${processed.length} products checked`
     );
+
   } catch (error) {
+
     console.error(
       "❌ Scan Failed"
     );
-    console.error(error);
+
+    console.error(
+      error
+    );
+
   } finally {
-    scanInProgress = false;
+
+    scanInProgress =
+      false;
   }
 }
 
 // =========================
-// Scanner Timer
+// SCANNER SCHEDULE
 // =========================
 
 function startScanner() {
+
+  if (scannerStarted) {
+    return;
+  }
+
+  scannerStarted =
+    true;
+
   console.log(
     "✅ Scanner Started - every 5 minutes"
   );
 
-  setInterval(async () => {
-    await scanForNewProducts();
+  setInterval(() => {
+
+    scanForNewProducts()
+      .catch(error =>
+        console.error(
+          "❌ Scheduled scan error",
+          error
+        )
+      );
+
   }, 5 * 60 * 1000);
 }
 
 // =========================
-// Daily Summary
+// DAILY SUMMARY
 // =========================
 
 function startDailySummary() {
+
   cron.schedule(
     "0 8 * * *",
+
     async () => {
+
       try {
+
         const channel =
           await client.channels.fetch(
             CHANNEL_ID
@@ -1023,1338 +1441,695 @@ function startDailySummary() {
         const stats =
           loadStats();
 
-        const savedProducts =
+        const products =
           loadProducts();
 
         await channel.send(
           "📊 **MattelBot Daily Summary**\n\n" +
-          `📦 Tracking: ${Object.keys(savedProducts).length}\n` +
+          `📦 Tracking: ${Object.keys(products).length}\n` +
           `🆕 New Products: ${stats.newProductsToday}\n` +
           `🔥 Restocks: ${stats.restocksToday}\n` +
-          `❌ Sold Out: ${stats.soldOutToday}`
+          `❌ Sold Out: ${stats.soldOutToday}\n` +
+          `💲 Price Changes: ${stats.priceChangesToday}`
         );
 
-        stats.newProductsToday = 0;
-        stats.restocksToday = 0;
-        stats.soldOutToday = 0;
+        stats.newProductsToday =
+          0;
 
-        saveStats(stats);
+        stats.restocksToday =
+          0;
 
-        console.log(
-          "📊 Daily summary sent and stats reset"
+        stats.soldOutToday =
+          0;
+
+        stats.priceChangesToday =
+          0;
+
+        saveStats(
+          stats
         );
+
       } catch (error) {
+
         console.error(
-          "❌ Daily summary failed"
+          "❌ Daily summary failed",
+          error
         );
-        console.error(error);
       }
     },
+
     {
-      timezone: "America/Chicago"
+      timezone:
+        "America/Chicago"
     }
   );
 }
 
 // =========================
-// Bot Ready
-// =========================
-
-client.once(
-  "clientReady",
-  async () => {
-    console.log(
-      `✅ Logged in as ${client.user.tag}`
-    );
-
-    await initializeProducts();
-
-    startScanner();
-    startDailySummary();
-  }
-);
-
-// =========================
-// Commands
+// DISCORD COMMANDS
 // =========================
 
 client.on(
   "messageCreate",
   async message => {
-    if (message.author.bot) return;
-
-    // =========================
-    // Ping
-    // =========================
 
     if (
-      message.content === "!ping"
+      message.author.bot
     ) {
-      return message.reply(
-        "🏓 Pong!"
-      );
+      return;
     }
 
-    // =========================
-    // Status
-    // =========================
+    try {
 
-    if (
-      message.content === "!status"
-    ) {
-      const savedProducts =
-        loadProducts();
+      const content =
+        message.content.trim();
 
-      return message.reply(
-        `✅ Online\n📦 Tracking ${Object.keys(savedProducts).length} products`
-      );
-    }
+      const lower =
+        content.toLowerCase();
 
-    // =========================
-    // Stats
-    // =========================
-
-    if (
-      message.content === "!stats"
-    ) {
-      const stats =
-        loadStats();
-
-      return message.reply(
-        "📊 MattelBot Daily Stats\n\n" +
-        `🆕 New Products: ${stats.newProductsToday}\n` +
-        `🔥 Restocks: ${stats.restocksToday}\n` +
-        `❌ Sold Out: ${stats.soldOutToday}`
-      );
-    }
-
-    // =========================
-    // Debug
-    // =========================
-
-    if (
-      message.content === "!debug"
-    ) {
-      const savedProducts =
-        loadProducts();
-
-      const stats =
-        loadStats();
-
-      return message.reply(
-        "🛠️ MattelBot Debug\n\n" +
-        `📦 Tracked Products: ${Object.keys(savedProducts).length}\n` +
-        `🆕 New Products Today: ${stats.newProductsToday}\n` +
-        `🔥 Restocks Today: ${stats.restocksToday}\n` +
-        `❌ Sold Out Today: ${stats.soldOutToday}\n` +
-        `📁 Data File: ${DATA_FILE}`
-      );
-    }
-
-    // =========================
-    // Test New Product Alert
-    // =========================
-
-    if (
-      message.content === "!testnew"
-    ) {
-      const embed =
-        new EmbedBuilder()
-          .setColor(0x00ff00)
-          .setTitle(
-            "🚨 NEW HOT WHEELS DETECTED"
-          )
-          .addFields(
-            {
-              name: "📦 Product",
-              value: "RLC Test Skyline"
-            },
-            {
-              name: "💲 Price",
-              value: "$24.99",
-              inline: true
-            },
-            {
-              name: "✅ Status",
-              value: "IN STOCK",
-              inline: true
-            }
-          )
-          .setURL(
-            "https://creations.mattel.com"
-          )
-          .setFooter({
-            text: "MattelBotV2"
-          });
-
-      const stats =
-        loadStats();
-
-      stats.newProductsToday++;
-
-      saveStats(stats);
-
-      console.log(
-        "TEST NEW PRODUCT COUNT"
-      );
-
-      return message.reply({
-        embeds: [embed]
-      });
-    }
-
-    // =========================
-    // Test Daily Summary
-    // =========================
-
-    if (
-      message.content === "!summary"
-    ) {
-      const stats =
-        loadStats();
-
-      const savedProducts =
-        loadProducts();
-
-      return message.reply(
-        "📊 MattelBot Daily Summary\n\n" +
-        `📦 Tracking: ${Object.keys(savedProducts).length}\n` +
-        `🆕 New Products: ${stats.newProductsToday}\n` +
-        `🔥 Restocks: ${stats.restocksToday}\n` +
-        `❌ Sold Out: ${stats.soldOutToday}`
-      );
-    }
-
-    // =========================
-    // Latest Products
-    // =========================
-
-    if (
-      message.content === "!latest"
-    ) {
-      const savedProducts =
-        loadProducts();
-
-      const latestProducts =
-        Object.values(savedProducts)
-          .sort(
-            (a, b) =>
-              new Date(b.detectedAt) -
-              new Date(a.detectedAt)
-          )
-          .slice(0, 10);
+      // =========================
+      // PING
+      // =========================
 
       if (
-        latestProducts.length === 0
+        content === "!ping"
       ) {
         return message.reply(
-          "❌ No products found."
+          "🏓 Pong!"
         );
       }
 
-      let reply =
-        "📦 Latest 10 Products\n\n";
-
-      latestProducts.forEach(
-        (product, index) => {
-          reply +=
-            `#${index + 1}\n` +
-            `📦 ${product.title}\n` +
-            `💲 ${product.price || "Unknown"}\n` +
-            `📅 ${new Date(product.detectedAt).toLocaleDateString()}\n` +
-            `🔗 ${getProductUrl(product.handle)}\n\n`;
-        }
-      );
-
-      return message.reply(
-        reply
-      );
-    }
-
-    // =========================
-    // Alerts
-    // =========================
-
-    if (
-      message.content === "!alerts"
-    ) {
-      const alerts =
-        loadAlerts();
+      // =========================
+      // STATUS
+      // =========================
 
       if (
-        alerts.length === 0
+        content === "!status"
       ) {
+
         return message.reply(
-          "📢 No alerts recorded yet."
+          `✅ Online\n📦 Tracking ${Object.keys(loadProducts()).length} products`
         );
       }
 
-      return message.reply(
-        "📢 Recent Alerts\n\n" +
-        alerts.join("\n")
-      );
-    }
-
-    // =========================
-    // Counts
-    // =========================
-
-    if (
-      message.content === "!counts"
-    ) {
-      const products =
-        Object.values(
-          loadProducts()
-        );
-
-      const inStock =
-        products.filter(
-          p => p.available === true
-        ).length;
-
-      const soldOut =
-        products.filter(
-          p => p.available === false
-        ).length;
-
-      return message.reply(
-        "📦 MattelBot Inventory Counts\n\n" +
-        `📦 Total Tracked: ${products.length}\n` +
-        `✅ In Stock: ${inStock}\n` +
-        `❌ Sold Out: ${soldOut}`
-      );
-    }
-
-    // =========================
-    // Product Search
-    // =========================
-
-    if (
-      message.content.startsWith(
-        "!product "
-      )
-    ) {
-      try {
-        const keyword =
-          message.content
-            .replace(
-              "!product ",
-              ""
-            )
-            .toLowerCase();
-
-        const data =
-          await getMattelData();
-
-        const matches =
-          data.products.filter(
-            product =>
-              product.title
-                .toLowerCase()
-                .includes(keyword)
-          );
-
-        if (
-          matches.length === 0
-        ) {
-          return message.reply(
-            "❌ Product not found."
-          );
-        }
-
-        const inStockProducts =
-          matches.filter(
-            product =>
-              isInStock(product)
-          );
-
-        if (
-          inStockProducts.length === 0
-        ) {
-          return message.reply(
-            `❌ No in-stock products found for "${keyword}".`
-          );
-        }
-
-        let reply =
-          `🟢 In Stock Results for "${keyword}"\n\n`;
-
-        inStockProducts
-          .slice(0, 5)
-          .forEach(
-            (product, index) => {
-              const price =
-                getPrice(product);
-
-              reply +=
-                `${index + 1}. ${product.title}\n` +
-                `💲 $${price}\n` +
-                `🔗 ${getProductUrl(product.handle)}\n\n`;
-            }
-          );
-
-        return message.reply(
-          reply
-        );
-      } catch (error) {
-        console.error(error);
-
-        return message.reply(
-          "❌ Could not reach Mattel."
-        );
-      }
-    }
-
-    // =========================
-    // Predict
-    // =========================
-
-    if (
-      message.content.startsWith(
-        "!predict "
-      )
-    ) {
-      const keyword =
-        message.content
-          .replace(
-            "!predict ",
-            ""
-          )
-          .toLowerCase();
-
-      const products =
-        loadProducts();
-
-      const match =
-        Object.values(products)
-          .find(product =>
-            product.title
-              .toLowerCase()
-              .includes(keyword)
-          );
-
-      if (!match) {
-        return message.reply(
-          "❌ Product not found."
-        );
-      }
+      // =========================
+      // STATS
+      // =========================
 
       if (
-        !match.stats ||
-        !Array.isArray(
-          match.stats
-            .restockTimestamps
-        ) ||
-        match.stats
-          .restockTimestamps.length < 2
+        content === "!stats"
       ) {
+
+        const s =
+          loadStats();
+
         return message.reply(
-          "📦 " + match.title + "\n\n" +
-          `🔥 Restocks Seen: ${match.stats?.restockEvents || 0}\n` +
-          `❌ Sold Outs Seen: ${match.stats?.soldOutEvents || 0}\n\n` +
-          "⏳ Still collecting history..."
+          "📊 Mattel Stats\n\n" +
+          `🆕 New Products: ${s.newProductsToday}\n` +
+          `🔥 Restocks: ${s.restocksToday}\n` +
+          `❌ Sold Out: ${s.soldOutToday}\n` +
+          `💲 Price Changes: ${s.priceChangesToday}`
         );
       }
 
-      return message.reply(
-        `📦 ${match.title}`
-      );
-    }
+      // =========================
+      // COUNTS
+      // =========================
 
-    // =========================
-    // Launch
-    // =========================
+      if (
+        content === "!counts"
+      ) {
 
-    if (
-      message.content.startsWith(
-        "!launch "
-      )
-    ) {
-      try {
-        const keyword =
-          message.content
-            .replace(
-              "!launch ",
-              ""
-            )
-            .toLowerCase();
+        const products =
+          Object.values(
+            loadProducts()
+          );
+
+        return message.reply(
+          "📦 Mattel Inventory Counts\n\n" +
+          `📦 Total Tracked: ${products.length}\n` +
+          `✅ In Stock: ${products.filter(p => p.available === true).length}\n` +
+          `❌ Sold Out: ${products.filter(p => p.available === false).length}`
+        );
+      }
+
+      // =========================
+      // DEBUG
+      // =========================
+
+      if (
+        content === "!debug"
+      ) {
 
         const products =
           loadProducts();
 
-        const match =
-          Object.values(products)
-            .find(product =>
-              product.title
-                .toLowerCase()
-                .includes(keyword)
+        const s =
+          loadStats();
+
+        return message.reply(
+          "🛠️ MattelBot Debug\n\n" +
+          `📦 Tracked Products: ${Object.keys(products).length}\n` +
+          `🆕 New Today: ${s.newProductsToday}\n` +
+          `🔥 Restocks Today: ${s.restocksToday}\n` +
+          `❌ Sold Out Today: ${s.soldOutToday}\n` +
+          `💲 Price Changes Today: ${s.priceChangesToday}\n` +
+          `⏰ Last Scan: ${s.lastScanAt || "Not recorded"}`
+        );
+      }
+
+      // =========================
+      // HEALTH
+      // =========================
+
+      if (
+        content === "!health"
+      ) {
+
+        const products =
+          Object.values(
+            loadProducts()
+          );
+
+        const s =
+          loadStats();
+
+        return message.reply(
+          "🤖 MattelBot Health\n\n" +
+          "✅ Online\n" +
+          `📦 Tracking: ${products.length}\n` +
+          `🆕 New Today: ${s.newProductsToday}\n` +
+          `🔥 Restocks Today: ${s.restocksToday}\n` +
+          `❌ Sold Out Today: ${s.soldOutToday}\n` +
+          `⏰ Last Scan: ${s.lastScanAt || "Not recorded"}`
+        );
+      }
+
+      // =========================
+      // ALERTS
+      // =========================
+
+      if (
+        content === "!alerts"
+      ) {
+
+        const alerts =
+          loadAlerts();
+
+        return message.reply(
+          alerts.length
+            ? alerts
+                .slice(0, 10)
+                .join("\n")
+            : "No alerts recorded yet."
+        );
+      }
+
+      // =========================
+      // WATCHLIST
+      // =========================
+
+      if (
+        content === "!watchlist"
+      ) {
+
+        const list =
+          loadWatchlist();
+
+        return message.reply(
+          list.length
+            ? `⭐ Watchlist\n\n${list.join("\n")}`
+            : "Watchlist empty."
+        );
+      }
+
+      if (
+        content.startsWith(
+          "!watch "
+        )
+      ) {
+
+        const keyword =
+          content
+            .slice(7)
+            .trim()
+            .toLowerCase();
+
+        if (!keyword) {
+          return message.reply(
+            "Usage: !watch keyword"
+          );
+        }
+
+        const list =
+          loadWatchlist();
+
+        if (
+          !list.includes(
+            keyword
+          )
+        ) {
+          list.push(
+            keyword
+          );
+        }
+
+        saveWatchlist(
+          list
+        );
+
+        return message.reply(
+          `⭐ Added to watchlist: ${keyword}`
+        );
+      }
+
+      if (
+        content.startsWith(
+          "!unwatch "
+        )
+      ) {
+
+        const keyword =
+          content
+            .slice(9)
+            .trim()
+            .toLowerCase();
+
+        const list =
+          loadWatchlist()
+            .filter(
+              x =>
+                x.toLowerCase() !==
+                keyword
             );
 
-        if (!match) {
+        saveWatchlist(
+          list
+        );
+
+        return message.reply(
+          `⭐ Removed from watchlist: ${keyword}`
+        );
+      }
+
+      // =========================
+      // HIDDEN
+      // =========================
+
+      if (
+        content === "!hidden"
+      ) {
+
+        const hidden =
+          Object.values(
+            loadProducts()
+          )
+          .filter(
+            p =>
+              p.wasHidden === true
+          );
+
+        if (
+          !hidden.length
+        ) {
+
           return message.reply(
-            "❌ Product not found."
+            "✅ No hidden products tracked."
           );
         }
 
-        const url =
-          getProductUrl(
-            match.handle
-          );
-
-        const response =
-          await fetch(url);
-
-        const html =
-          await response.text();
-
-        const launchMatch =
-          html.match(
-            /Launches\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}\s+[ap]m\s+PT/i
-          );
-
-        let reply =
-          `🚀 Launch Information\n\n${match.title}\n\n`;
-
-        if (launchMatch) {
-          reply +=
-            `📅 ${launchMatch[0]}\n\n`;
-        }
-
-        reply +=
-          `🔗 ${url}`;
-
         return message.reply(
-          reply
-        );
-      } catch (error) {
-        console.error(error);
-
-        return message.reply(
-          "❌ Could not retrieve launch data."
+          "🚨 Hidden Products\n\n" +
+          hidden
+            .slice(0, 25)
+            .map(
+              p =>
+                `📦 ${p.title}`
+            )
+            .join("\n") +
+          `\n\n📊 Total Hidden: ${hidden.length}`
         );
       }
-    }
 
-    // =========================
-    // Watch
-    // =========================
+      // =========================
+      // UPCOMING
+      // =========================
 
-    if (
-      message.content.startsWith(
-        "!watch "
-      )
-    ) {
-      const keyword =
-        message.content
-          .replace(
-            "!watch ",
-            ""
+      if (
+        content === "!upcoming"
+      ) {
+
+        const upcoming =
+          Object.values(
+            loadProducts()
           )
-          .toLowerCase()
-          .trim();
-
-      const watchlist =
-        loadWatchlist();
-
-      if (
-        watchlist.includes(keyword)
-      ) {
-        return message.reply(
-          `⚠️ ${keyword} is already being watched.`
-        );
-      }
-
-      watchlist.push(keyword);
-
-      fs.writeFileSync(
-        WATCHLIST_FILE,
-        JSON.stringify(
-          watchlist,
-          null,
-          2
-        )
-      );
-
-      return message.reply(
-        `✅ Added "${keyword}" to watchlist.`
-      );
-    }
-
-    // =========================
-    // Unwatch
-    // =========================
-
-    if (
-      message.content.startsWith(
-        "!unwatch "
-      )
-    ) {
-      const keyword =
-        message.content
-          .replace(
-            "!unwatch ",
-            ""
+          .filter(
+            p =>
+              p.upcoming === true &&
+              p.launchDate
           )
-          .toLowerCase()
-          .trim();
+          .sort(
+            (a, b) =>
+              new Date(
+                a.launchDate
+              ) -
+              new Date(
+                b.launchDate
+              )
+          )
+          .slice(0, 15);
 
-      const watchlist =
-        loadWatchlist();
+        if (
+          !upcoming.length
+        ) {
+
+          return message.reply(
+            "✅ No upcoming launches tracked."
+          );
+        }
+
+        return message.reply(
+          "🚀 Upcoming Launches\n\n" +
+          upcoming
+            .map(
+              p =>
+                `📦 ${p.title}\n📅 ${p.launchDate}`
+            )
+            .join("\n\n")
+        );
+      }
+
+      // =========================
+      // LATEST
+      // =========================
 
       if (
-        !watchlist.includes(keyword)
+        content === "!latest"
       ) {
+
+        const latest =
+          Object.values(
+            loadProducts()
+          )
+          .sort(
+            (a, b) => {
+
+              const ad =
+                Date.parse(
+                  a.catalogCreatedAt ||
+                  a.firstSeen ||
+                  a.detectedAt ||
+                  0
+                );
+
+              const bd =
+                Date.parse(
+                  b.catalogCreatedAt ||
+                  b.firstSeen ||
+                  b.detectedAt ||
+                  0
+                );
+
+              return bd - ad;
+            }
+          )
+          .slice(0, 10);
+
+        if (
+          !latest.length
+        ) {
+
+          return message.reply(
+            "❌ No products found."
+          );
+        }
+
         return message.reply(
-          `⚠️ ${keyword} is not in the watchlist.`
+          "📦 Latest Catalog Products\n\n" +
+
+          latest
+            .map(
+              (p, i) =>
+                `${i + 1}. ${p.title}\n` +
+                `📅 ${p.catalogCreatedAt || "Catalog date unavailable"}\n` +
+                `🔗 ${p.url}`
+            )
+            .join("\n\n")
         );
       }
 
-      const updated =
-        watchlist.filter(
-          item => item !== keyword
-        );
-
-      fs.writeFileSync(
-        WATCHLIST_FILE,
-        JSON.stringify(
-          updated,
-          null,
-          2
-        )
-      );
-
-      return message.reply(
-        `✅ Removed "${keyword}" from watchlist.`
-      );
-    }
-
-    // =========================
-    // Watch Stats
-    // =========================
-
-    if (
-      message.content === "!watchstats"
-    ) {
-      const watchlist =
-        loadWatchlist();
-
-      const products =
-        Object.values(
-          loadProducts()
-        );
-
-      let reply =
-        "⭐ Watchlist Stats\n\n";
-
-      for (
-        const keyword of watchlist
-      ) {
-        const match =
-          products.find(product =>
-            product.title
-              .toLowerCase()
-              .includes(keyword)
-          );
-
-        if (!match) continue;
-
-        reply +=
-          `📦 ${match.title}\n` +
-          `🔥 Restocks: ${match.stats?.restockEvents || 0}\n` +
-          `❌ Sold Outs: ${match.stats?.soldOutEvents || 0}\n\n`;
-      }
-
-      return message.reply(
-        reply
-      );
-    }
-
-    // =========================
-    // Watch Stock
-    // =========================
-
-    if (
-      message.content === "!watchstock"
-    ) {
-      const watchlist =
-        loadWatchlist();
-
-      const products =
-        Object.values(
-          loadProducts()
-        );
-
-      let inStock = 0;
-      let soldOut = 0;
-
-      let reply =
-        "⭐ Watchlist Stock Status\n\n";
-
-      for (
-        const keyword of watchlist
-      ) {
-        const match =
-          products.find(product =>
-            product.title
-              .toLowerCase()
-              .includes(keyword)
-          );
-
-        if (!match) continue;
-
-        if (
-          match.available === true
-        ) {
-          inStock++;
-
-          reply +=
-            `✅ IN STOCK\n` +
-            `${match.title}\n\n`;
-        } else {
-          soldOut++;
-
-          reply +=
-            `❌ SOLD OUT\n` +
-            `${match.title}\n\n`;
-        }
-      }
-
-      reply +=
-        `📊 In Stock: ${inStock}\n` +
-        `📊 Sold Out: ${soldOut}`;
-
-      return message.reply(
-        reply
-      );
-    }
-
-    // =========================
-    // Watch In
-    // =========================
-
-    if (
-      message.content === "!watchin"
-    ) {
-      const watchlist =
-        loadWatchlist();
-
-      const products =
-        Object.values(
-          loadProducts()
-        );
-
-      let count = 0;
-
-      let reply =
-        "⭐ Watchlist In Stock\n\n";
-
-      for (
-        const keyword of watchlist
-      ) {
-        const match =
-          products.find(product =>
-            product.title
-              .toLowerCase()
-              .includes(keyword)
-          );
-
-        if (!match) continue;
-
-        if (
-          match.available !== true
-        ) {
-          continue;
-        }
-
-        count++;
-
-        reply +=
-          `✅ ${match.title}\n\n`;
-      }
-
-      reply +=
-        `\n📊 Total In Stock: ${count}`;
-
-      return message.reply(
-        reply
-      );
-    }
-
-    // =========================
-    // Watch Out
-    // =========================
-
-    if (
-      message.content === "!watchout"
-    ) {
-      const watchlist =
-        loadWatchlist();
-
-      const products =
-        Object.values(
-          loadProducts()
-        );
-
-      let count = 0;
-
-      let reply =
-        "⭐ Watchlist Sold Out\n\n";
-
-      for (
-        const keyword of watchlist
-      ) {
-        const match =
-          products.find(product =>
-            product.title
-              .toLowerCase()
-              .includes(keyword)
-          );
-
-        if (!match) continue;
-
-        if (
-          match.available === true
-        ) {
-          continue;
-        }
-
-        count++;
-
-        reply +=
-          `❌ ${match.title}\n\n`;
-      }
-
-      reply +=
-        `\n📊 Total Sold Out: ${count}`;
-
-      return message.reply(
-        reply
-      );
-    }
-
-    // =========================
-    // Watch Summary
-    // =========================
-
-    if (
-      message.content === "!watchsummary"
-    ) {
-      const watchlist =
-        loadWatchlist();
-
-      const products =
-        Object.values(
-          loadProducts()
-        );
-
-      let inStock = 0;
-      let soldOut = 0;
-      let restocks = 0;
-      let soldOutEvents = 0;
-
-      let reply =
-        "⭐ Watchlist Summary\n\n";
-
-      for (
-        const keyword of watchlist
-      ) {
-        const match =
-          products.find(product =>
-            product.title
-              .toLowerCase()
-              .includes(keyword)
-          );
-
-        if (!match) continue;
-
-        if (
-          match.available === true
-        ) {
-          inStock++;
-
-          reply +=
-            `✅ ${match.title}\n`;
-        } else {
-          soldOut++;
-
-          reply +=
-            `❌ ${match.title}\n`;
-        }
-
-        restocks +=
-          match.stats
-            ?.restockEvents || 0;
-
-        soldOutEvents +=
-          match.stats
-            ?.soldOutEvents || 0;
-      }
-
-      reply +=
-        "\n📊 Summary\n" +
-        `✅ In Stock: ${inStock}\n` +
-        `❌ Sold Out: ${soldOut}\n` +
-        `🔥 Restocks Seen: ${restocks}\n` +
-        `🚫 Sold Out Events: ${soldOutEvents}`;
-
-      return message.reply(
-        reply
-      );
-    }
-
-    // =========================
-    // Dashboard
-    // =========================
-
-    if (
-      message.content === "!dashboard"
-    ) {
-      const watchlist =
-        loadWatchlist();
-
-      const products =
-        Object.values(
-          loadProducts()
-        );
-
-      const stats =
-        loadStats();
-
-      let inStock = 0;
-      let soldOut = 0;
-
-      let topProduct = "None";
-      let topScore = 0;
-
-      for (
-        const keyword of watchlist
-      ) {
-        const match =
-          products.find(product =>
-            product.title
-              .toLowerCase()
-              .includes(keyword)
-          );
-
-        if (!match) continue;
-
-        if (
-          match.available === true
-        ) {
-          inStock++;
-        } else {
-          soldOut++;
-        }
-
-        const score =
-          (match.stats
-            ?.restockEvents || 0) +
-          (match.stats
-            ?.soldOutEvents || 0);
-
-        if (score > topScore) {
-          topScore = score;
-          topProduct =
-            match.title;
-        }
-      }
-
-      const alerts =
-        loadAlerts();
-
-      let reply =
-        "📊 Mattel Dashboard\n\n" +
-
-        "⭐ Watchlist\n" +
-        `✅ In Stock: ${inStock}\n` +
-        `❌ Sold Out: ${soldOut}\n\n` +
-
-        "📈 Activity\n" +
-        `🏆 Top Product: ${topProduct}\n` +
-        `📊 Activity Score: ${topScore}\n\n` +
-
-        "📢 Today\n" +
-        `🆕 New Products: ${stats.newProductsToday}\n` +
-        `🔥 Restocks: ${stats.restocksToday}\n` +
-        `❌ Sold Outs: ${stats.soldOutToday}\n\n` +
-
-        "🚨 Latest Alert\n" +
-        `${alerts[0] || "No alerts yet"}`;
-
-      return message.reply(
-        reply
-      );
-    }
-
-    // =========================
-    // Hidden
-    // =========================
-
-    if (
-      message.content === "!hidden"
-    ) {
-      const products =
-        Object.values(
-          loadProducts()
-        );
-
-      const hiddenProducts =
-        products.filter(
-          p =>
-            p.wasHidden === true
-        );
+      // =========================
+      // MOST ACTIVE
+      // =========================
 
       if (
-        hiddenProducts.length === 0
+        content === "!hot"
       ) {
-        return message.reply(
-          "✅ No hidden products tracked."
-        );
-      }
 
-      let reply =
-        "🚨 Hidden Products\n\n";
+        const ranked =
+          Object.values(
+            loadProducts()
+          )
+          .filter(
+            p => p.stats
+          )
+          .map(
+            p => ({
+              title:
+                p.title,
 
-      hiddenProducts
-        .slice(0, 25)
-        .forEach(product => {
-          reply +=
-            `📦 ${product.title}\n` +
-            `🔗 ${getProductUrl(product.handle)}\n\n`;
-        });
-
-      reply +=
-        `📊 Total Hidden: ${hiddenProducts.length}`;
-
-      return message.reply(
-        reply
-      );
-    }
-
-    // =========================
-    // Watchlist
-    // =========================
-
-    if (
-      message.content === "!watchlist"
-    ) {
-      const watchlist =
-        loadWatchlist();
-
-      return message.reply(
-        "⭐ Watchlist\n\n" +
-        watchlist.join("\n")
-      );
-    }
-
-    // =========================
-    // Hot
-    // =========================
-
-    if (
-      message.content === "!hot"
-    ) {
-      const products =
-        Object.values(
-          loadProducts()
-        );
-
-      const ranked =
-        products
-          .filter(p => p.stats)
-          .map(p => ({
-            title: p.title,
-            score:
-              (p.stats
-                .restockEvents || 0) +
-              (p.stats
-                .soldOutEvents || 0)
-          }))
+              score:
+                (p.stats.restockEvents || 0) +
+                (p.stats.soldOutEvents || 0)
+            })
+          )
           .sort(
             (a, b) =>
               b.score - a.score
           )
           .slice(0, 10);
 
-      if (
-        ranked.length === 0
-      ) {
-        return message.reply(
-          "❌ No activity data yet."
-        );
-      }
-
-      let reply =
-        "🏆 Most Active Products\n\n";
-
-      ranked.forEach(
-        (item, index) => {
-          reply +=
-            `${index + 1}. ${item.title}\n` +
-            `📊 Activity Score: ${item.score}\n\n`;
-        }
-      );
-
-      return message.reply(
-        reply
-      );
-    }
-
-    // =========================
-    // Health
-    // =========================
-
-    if (
-      message.content === "!health"
-    ) {
-      const savedProducts =
-        loadProducts();
-
-      const stats =
-        loadStats();
-
-      return message.reply(
-        "🤖 MattelBot Health\n\n" +
-        "✅ Online\n" +
-        `📦 Tracking: ${Object.keys(savedProducts).length}\n` +
-        `🆕 New Today: ${stats.newProductsToday}\n` +
-        `🔥 Restocks Today: ${stats.restocksToday}\n` +
-        `❌ Sold Out Today: ${stats.soldOutToday}\n` +
-        `⏰ Checked: ${new Date().toLocaleString()}`
-      );
-    }
-
-    // =========================
-    // Help
-    // =========================
-
-    if (
-      message.content === "!help"
-    ) {
-      return message.reply(
-        "🤖 Mattel Scanner Commands\n\n" +
-
-        "📦 Core\n" +
-        "!status\n" +
-        "!health\n" +
-        "!stats\n" +
-        "!counts\n" +
-        "!debug\n\n" +
-
-        "🔍 Products\n" +
-        "!product keyword\n" +
-        "!latest\n" +
-        "!upcoming\n" +
-        "!hidden\n\n" +
-
-        "⭐ Watchlist\n" +
-        "!watch keyword\n" +
-        "!unwatch keyword\n" +
-        "!watchlist\n" +
-        "!watchstats\n" +
-        "!watchstock\n" +
-        "!watchin\n" +
-        "!watchout\n" +
-        "!watchsummary\n\n" +
-
-        "📈 Analytics\n" +
-        "!hot\n" +
-        "!predict keyword\n" +
-        "!launch keyword\n\n" +
-
-        "📢 Alerts\n" +
-        "!alerts\n\n" +
-
-        "🔎 Scanner\n" +
-        "!scan\n" +
-        "!upcoming\n" +
-        "!dashboard"
-      );
-    }
-
-    // =========================
-    // Manual Scan
-    // =========================
-
-    if (
-      message.content === "!scan"
-    ) {
-      try {
-        const data =
-          await getMattelData();
-
-        const products =
-          data.products.filter(
-            isHotWheelsProduct
-          );
-
-        let reply =
-          "🚗 Latest Hot Wheels\n\n";
-
-        products
-          .slice(0, 5)
-          .forEach(product => {
-            const price =
-              getPrice(product);
-
-            const inStock =
-              isInStock(product);
-
-            reply +=
-              `${inStock ? "✅ IN STOCK" : "❌ SOLD OUT"}\n` +
-              `📦 ${product.title}\n` +
-              `💲 $${price}\n` +
-              `🔗 ${getProductUrl(product.handle)}\n\n`;
-          });
-
-        const embed =
-          new EmbedBuilder()
-            .setColor(0x0099ff)
-            .setTitle(
-              "🚗 Latest Hot Wheels"
-            )
-            .setDescription(reply)
-            .setFooter({
-              text: "MattelBotV2"
-            });
-
-        return message.reply({
-          embeds: [embed]
-        });
-      } catch (error) {
-        console.error(error);
-
-        return message.reply(
-          "❌ Could not reach Mattel."
-        );
-      }
-    }
-
-    // =========================
-    // Upcoming
-    // =========================
-
-    if (
-      message.content === "!upcoming"
-    ) {
-      try {
-        const data =
-          await getMattelData();
-
-        const products =
-          data.products.filter(
-            product =>
-              isHotWheelsProduct(
-                product
-              ) &&
-              !isInStock(product)
-          );
-
-        for (
-          const product of products.slice(
-            0,
-            5
-          )
+        if (
+          !ranked.length
         ) {
-          const price =
-            getPrice(product);
 
-          const embed =
-            new EmbedBuilder()
-              .setColor(0xffcc00)
-              .setTitle(
-                "🚀 UPCOMING PRODUCT"
-              )
-              .addFields(
-                {
-                  name: "📦 Product",
-                  value: product.title
-                },
-                {
-                  name: "💲 Price",
-                  value: `$${price}`,
-                  inline: true
-                },
-                {
-                  name: "👀 Status",
-                  value:
-                    "NOT AVAILABLE YET",
-                  inline: true
-                }
-              )
-              .setThumbnail(
-                product.images?.[0]?.src ||
-                null
-              )
-              .setFooter({
-                text: "MattelBotV2"
-              });
-
-          const row =
-            new ActionRowBuilder()
-              .addComponents(
-                new ButtonBuilder()
-                  .setLabel(
-                    "🛒 View Product"
-                  )
-                  .setStyle(
-                    ButtonStyle.Link
-                  )
-                  .setURL(
-                    getProductUrl(
-                      product.handle
-                    )
-                  )
-              );
-
-          await message.channel.send({
-            embeds: [embed],
-            components: [row]
-          });
+          return message.reply(
+            "❌ No activity data yet."
+          );
         }
 
-        return;
-      } catch (error) {
-        console.error(error);
-
         return message.reply(
-          "❌ Could not reach Mattel."
+          "🏆 Most Active Products\n\n" +
+
+          ranked
+            .map(
+              (p, i) =>
+                `${i + 1}. ${p.title}\n` +
+                `📊 Activity Score: ${p.score}`
+            )
+            .join("\n\n")
         );
       }
+
+      // =========================
+      // PRODUCT SEARCH
+      // =========================
+
+      if (
+        content.startsWith(
+          "!product "
+        )
+      ) {
+
+        const keyword =
+          lower
+            .slice(9)
+            .trim();
+
+        const match =
+          Object.values(
+            loadProducts()
+          )
+          .find(
+            p =>
+              p.title
+                .toLowerCase()
+                .includes(keyword) ||
+              p.handle
+                .toLowerCase()
+                .includes(keyword)
+          );
+
+        if (!match) {
+
+          return message.reply(
+            "❌ Product not found in tracked data."
+          );
+        }
+
+        return message.reply(
+          `📦 ${match.title}\n` +
+          `📊 Status: ${match.available ? "IN STOCK" : "SOLD OUT / UNAVAILABLE"}\n` +
+          `💲 Price: $${match.price || "Unknown"}\n` +
+          `📅 Mattel Created: ${match.catalogCreatedAt || "Unknown"}\n` +
+          `🔗 ${match.url}`
+        );
+      }
+
+      // =========================
+      // SUMMARY
+      // =========================
+
+      if (
+        content === "!summary"
+      ) {
+
+        const products =
+          Object.values(
+            loadProducts()
+          );
+
+        const hidden =
+          products.filter(
+            p =>
+              p.wasHidden === true
+          );
+
+        const upcoming =
+          products.filter(
+            p =>
+              p.upcoming === true
+          );
+
+        return message.reply(
+          "📊 Mattel Opportunity Summary\n\n" +
+          `📦 Tracking: ${products.length}\n` +
+          `🚀 Future Opportunities: ${upcoming.length}\n` +
+          `🚨 Hidden Opportunities: ${hidden.length}`
+        );
+      }
+
+      // =========================
+      // MANUAL SCAN
+      // =========================
+
+      if (
+        content === "!scan"
+      ) {
+
+        await scanForNewProducts();
+
+        return message.reply(
+          "🔎 Manual scan completed."
+        );
+      }
+
+      // =========================
+      // TEST
+      // =========================
+
+      if (
+        content === "!testnew"
+      ) {
+
+        return message.reply(
+          "✅ Test command received. No real product alert was generated."
+        );
+      }
+
+      // =========================
+      // HELP
+      // =========================
+
+      if (
+        content === "!help"
+      ) {
+
+        return message.reply(
+          "🤖 Mattel Scanner Commands\n\n" +
+
+          "📦 Core\n" +
+          "!ping\n" +
+          "!status\n" +
+          "!health\n" +
+          "!stats\n" +
+          "!counts\n" +
+          "!debug\n\n" +
+
+          "🔍 Products\n" +
+          "!product keyword\n" +
+          "!latest\n" +
+          "!hidden\n" +
+          "!upcoming\n" +
+          "!summary\n" +
+          "!scan\n\n" +
+
+          "⭐ Watchlist\n" +
+          "!watch keyword\n" +
+          "!unwatch keyword\n" +
+          "!watchlist\n\n" +
+
+          "📈 Activity\n" +
+          "!hot\n\n" +
+
+          "📢 Alerts\n" +
+          "!alerts"
+        );
+      }
+
+    } catch (error) {
+
+      console.error(
+        "❌ Command error",
+        error
+      );
+
+      await message
+        .reply(
+          "❌ Command failed. Check Railway logs."
+        )
+        .catch(
+          () => {}
+        );
     }
   }
 );
 
 // =========================
-// Error Handling
+// BOT READY
 // =========================
 
-process.on(
-  "unhandledRejection",
-  error => {
-    console.error(
-      "❌ Unhandled Rejection:",
-      error
-    );
-  }
-);
+client.once(
+  "ready",
+  async () => {
 
-process.on(
-  "uncaughtException",
-  error => {
-    console.error(
-      "❌ Uncaught Exception:",
-      error
+    console.log(
+      `✅ Logged in as ${client.user.tag}`
     );
+
+    startDailySummary();
+
+    await scanForNewProducts();
+
+    startScanner();
   }
 );
 
 // =========================
-// Login
+// LOGIN
 // =========================
+
+if (
+  !process.env.DISCORD_TOKEN
+) {
+
+  console.error(
+    "❌ DISCORD_TOKEN is not configured."
+  );
+
+  process.exit(1);
+}
 
 client.login(
   process.env.DISCORD_TOKEN
 );
-
-// Stable Backup
