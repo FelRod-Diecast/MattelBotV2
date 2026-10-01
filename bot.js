@@ -1,4 +1,6 @@
-require("dotenv").config();
+// bot.js
+// FIXED: prevents repeated new-product/watchlist notifications,
+// preserves 5-minute scanning, and fixes availability transition checks.
 
 const {
   Client,
@@ -8,6 +10,7 @@ const {
   ButtonBuilder,
   ButtonStyle
 } = require("discord.js");
+
 const fs = require("fs");
 const cron = require("node-cron");
 
@@ -97,9 +100,16 @@ function readJson(file, fallback) {
 }
 
 function writeJson(file, data) {
+  const tempFile = `${file}.tmp`;
+
   fs.writeFileSync(
-    file,
+    tempFile,
     JSON.stringify(data, null, 2)
+  );
+
+  fs.renameSync(
+    tempFile,
+    file
   );
 }
 
@@ -117,7 +127,8 @@ function loadStats() {
     restocksToday: 0,
     soldOutToday: 0,
     priceChangesToday: 0,
-    lastScanAt: null
+    lastScanAt: null,
+    newProductAlertedIds: []
   });
 }
 
@@ -181,43 +192,73 @@ function isHotWheelsProduct(product) {
 }
 
 // =========================
-// PRODUCT HELPERS
+// HELPERS
 // =========================
 
-function productUrl(handle) {
-  return `https://creations.mattel.com/products/${handle}`;
-}
-
 function getPrice(product) {
-  const variant =
-    product?.variants?.find(v => v.available) ||
-    product?.variants?.[0];
+  const value =
+    product?.variants?.[0]?.price ??
+    product?.price ??
+    null;
 
-  return variant?.price || null;
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const numeric =
+    Number(
+      String(value)
+        .replace("$", "")
+        .replace(",", "")
+    );
+
+  return Number.isFinite(numeric)
+    ? numeric
+    : null;
 }
 
 function getAvailable(product) {
-  return Boolean(
-    product?.variants?.some(v => v.available)
+  if (
+    product &&
+    typeof product.available === "boolean"
+  ) {
+    return product.available;
+  }
+
+  const variants =
+    Array.isArray(product?.variants)
+      ? product.variants
+      : [];
+
+  return variants.some(
+    variant =>
+      variant &&
+      variant.available === true
   );
 }
 
 function getVariantId(product) {
-  const variant =
-    product?.variants?.find(v => v.available) ||
-    product?.variants?.[0];
-
-  return variant?.id || null;
+  return (
+    product?.variants?.[0]?.id ||
+    null
+  );
 }
 
 function getImage(product) {
-  return product?.images?.[0]?.src || null;
+  return (
+    product?.images?.[0]?.src ||
+    product?.featured_image ||
+    product?.image ||
+    null
+  );
 }
 
 function getCatalogCreatedAt(product) {
   return (
     product?.created_at ||
     product?.createdAt ||
+    product?.published_at ||
+    product?.publishedAt ||
     null
   );
 }
@@ -230,262 +271,221 @@ function getPublishedAt(product) {
   );
 }
 
-// =========================
-// LAUNCH DETECTION
-// =========================
-
-function getLaunchInfoFromHtml(html) {
-  const match = String(html || "").match(
-    /Launches\s+([A-Za-z]+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}\s*(?:am|pm)\s*PT)/i
-  );
-
-  if (!match) {
-    return {
-      upcoming: false,
-      launchDate: null
-    };
-  }
-
-  const parsed =
-    new Date(match[1]);
-
-  if (
-    Number.isNaN(
-      parsed.getTime()
-    )
-  ) {
-    return {
-      upcoming: false,
-      launchDate: match[1]
-    };
-  }
-
-  return {
-    upcoming:
-      parsed.getTime() > Date.now(),
-
-    launchDate:
-      match[1]
-  };
+function productUrl(handle) {
+  return `https://creations.mattel.com/products/${handle}`;
 }
 
-// =========================
-// PRODUCT PAGE VERIFICATION
-// =========================
+function parseLaunchDate(text) {
+  if (!text) {
+    return null;
+  }
 
-async function fetchProductPageInfo(
-  handle,
-  shouldCheckLaunch
-) {
-  const url =
-    productUrl(handle);
-
-  try {
-    const response =
-      await fetch(url, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36"
-        }
-      });
-
-    if (!response.ok) {
-      return {
-        productPageFetched: false,
-        explicitlySoldOut: false,
-        upcoming: false,
-        launchDate: null
-      };
-    }
-
-    const html =
-      await response.text();
-
-    const lower =
-      html.toLowerCase();
-
-    const explicitlySoldOut =
-      lower.includes("sold out") ||
-      lower.includes("out of stock") ||
-      lower.includes("unavailable");
-
-    const launchInfo =
-      shouldCheckLaunch
-        ? getLaunchInfoFromHtml(html)
-        : {
-            upcoming: false,
-            launchDate: null
-          };
-
-    return {
-      productPageFetched: true,
-      explicitlySoldOut,
-      upcoming:
-        launchInfo.upcoming,
-      launchDate:
-        launchInfo.launchDate
-    };
-
-  } catch (error) {
-
-    console.error(
-      `⚠️ Product page check failed: ${handle}`,
-      error.message
+  const match =
+    String(text).match(
+      /Launches\s+([A-Za-z]+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}\s*(?:am|pm)\s*PT)/i
     );
 
-    return {
-      productPageFetched: false,
-      explicitlySoldOut: false,
-      upcoming: false,
-      launchDate: null
-    };
-  }
+  return match
+    ? match[1]
+    : null;
 }
 
 // =========================
-// MATTEL CATALOG
+// MATTEL PRODUCT CATALOG
 // =========================
 
 async function getMattelProducts() {
-
-  const allProducts = [];
-  const seenIds = new Set();
+  const products = [];
+  const seen = new Set();
 
   let page = 1;
 
   while (true) {
+    const url =
+      `https://creations.mattel.com/products.json?limit=250&page=${page}`;
 
     const response =
-      await fetch(
-        `https://creations.mattel.com/products.json?limit=250&page=${page}`
+      await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 MattelBotV2"
+        }
+      });
+
+    if (!response.ok) {
+      throw new Error(
+        `Mattel catalog HTTP ${response.status}`
       );
+    }
 
-    const text =
-      await response.text();
+    const data =
+      await response.json();
 
-    if (
-      text.startsWith("<!DOCTYPE") ||
-      text.startsWith("<html")
-    ) {
+    const batch =
+      Array.isArray(data?.products)
+        ? data.products
+        : [];
+
+    if (!batch.length) {
       break;
     }
 
-    let data;
-
-    try {
-      data =
-        JSON.parse(text);
-    } catch {
-      break;
-    }
-
-    if (
-      !Array.isArray(
-        data.products
-      ) ||
-      data.products.length === 0
-    ) {
-      break;
-    }
-
-    for (
-      const product of data.products
-    ) {
-
+    for (const product of batch) {
       const id =
-        String(product.id);
+        String(product?.id || "");
 
       if (
-        seenIds.has(id)
+        id &&
+        !seen.has(id)
       ) {
-        continue;
+        seen.add(id);
+        products.push(product);
       }
-
-      seenIds.add(id);
-      allProducts.push(product);
     }
 
     console.log(
-      `📄 Loaded page ${page} (${data.products.length} products)`
+      `📄 Mattel catalog page ${page}: ${batch.length} products`
     );
+
+    if (
+      batch.length < 250
+    ) {
+      break;
+    }
 
     page++;
   }
 
   console.log(
-    `📦 Mattel catalog collected: ${allProducts.length} unique products`
+    `📦 Mattel catalog total: ${products.length}`
   );
 
-  return allProducts;
+  return products;
 }
 
 // =========================
-// DISCORD EMBEDS
+// PRODUCT PAGE CHECK
+// =========================
+
+async function fetchProductPageInfo(
+  handle,
+  checkLaunch
+) {
+  const result = {
+    productPageFetched: false,
+    explicitlySoldOut: false,
+    upcoming: false,
+    launchDate: null
+  };
+
+  if (!handle) {
+    return result;
+  }
+
+  try {
+    const response =
+      await fetch(
+        productUrl(handle),
+        {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 MattelBotV2"
+          }
+        }
+      );
+
+    if (!response.ok) {
+      return result;
+    }
+
+    const html =
+      await response.text();
+
+    result.productPageFetched =
+      true;
+
+    const lower =
+      html.toLowerCase();
+
+    result.explicitlySoldOut =
+      lower.includes("sold out") ||
+      lower.includes("out of stock") ||
+      lower.includes("unavailable");
+
+    if (checkLaunch) {
+      result.launchDate =
+        parseLaunchDate(html);
+
+      result.upcoming =
+        Boolean(
+          result.launchDate
+        );
+    }
+
+    return result;
+
+  } catch (error) {
+
+    console.error(
+      `⚠️ Product page check failed for ${handle}`,
+      error.message
+    );
+
+    return result;
+  }
+}
+
+// =========================
+// EMBEDS
 // =========================
 
 function makeEmbed(
   title,
   color,
   product,
-  fields
+  fields = []
 ) {
-
   const embed =
     new EmbedBuilder()
-      .setColor(color)
       .setTitle(title)
-      .setURL(product.url)
-      .addFields(fields)
-      .setFooter({
-        text: "MattelBotV2"
-      });
+      .setColor(color)
+      .setDescription(
+        product?.title ||
+        "Mattel Product"
+      )
+      .setURL(
+        product?.url ||
+        productUrl(product?.handle)
+      )
+      .setTimestamp();
 
-  if (product.image) {
+  if (product?.image) {
     embed.setThumbnail(
       product.image
     );
   }
 
+  if (fields.length) {
+    embed.addFields(fields);
+  }
+
   return embed;
 }
 
-function cartRow(
-  variantId
-) {
-
+function cartRow(variantId) {
   if (!variantId) {
     return null;
   }
 
   return new ActionRowBuilder()
     .addComponents(
-
       new ButtonBuilder()
-        .setLabel("🛒 QTY 2")
-        .setStyle(ButtonStyle.Link)
+        .setLabel("🛒 View Product")
+        .setStyle(
+          ButtonStyle.Link
+        )
         .setURL(
-          `https://creations.mattel.com/cart/${variantId}:2`
-        ),
-
-      new ButtonBuilder()
-        .setLabel("🛒 QTY 10")
-        .setStyle(ButtonStyle.Link)
-        .setURL(
-          `https://creations.mattel.com/cart/${variantId}:10`
-        ),
-
-      new ButtonBuilder()
-        .setLabel("🛒 QTY 20")
-        .setStyle(ButtonStyle.Link)
-        .setURL(
-          `https://creations.mattel.com/cart/${variantId}:20`
-        ),
-
-      new ButtonBuilder()
-        .setLabel("🛒 QTY 50")
-        .setStyle(ButtonStyle.Link)
-        .setURL(
-          `https://creations.mattel.com/cart/${variantId}:50`
+          "https://creations.mattel.com/"
         )
     );
 }
@@ -495,7 +495,6 @@ async function sendToChannel(
   embed,
   row = null
 ) {
-
   const payload = {
     embeds: [embed]
   };
@@ -513,7 +512,6 @@ function addAlert(
   alerts,
   text
 ) {
-
   alerts.unshift(text);
 
   saveAlerts(
@@ -530,7 +528,6 @@ function ensureRecord(
   product,
   now
 ) {
-
   const price =
     getPrice(product);
 
@@ -605,6 +602,9 @@ function ensureRecord(
 
     existing.upcomingAlertSent =
       existing.upcomingAlertSent === true;
+
+    existing.newAlertSent =
+      existing.newAlertSent === true;
 
     existing.stats =
       existing.stats || {
@@ -685,6 +685,9 @@ function ensureRecord(
     upcomingAlertSent:
       false,
 
+    newAlertSent:
+      false,
+
     predictionAlertSent:
       false,
 
@@ -708,7 +711,6 @@ function isActuallyNewProduct(
   previous,
   lastScanAt
 ) {
-
   if (previous) {
     return false;
   }
@@ -809,6 +811,22 @@ async function scanForNewProducts() {
     const stats =
       loadStats();
 
+    // Persistent list of product IDs that have already
+    // received a real NEW PRODUCT notification.
+    stats.newProductAlertedIds =
+      Array.isArray(
+        stats.newProductAlertedIds
+      )
+        ? stats.newProductAlertedIds.map(
+            String
+          )
+        : [];
+
+    const newProductAlertedIds =
+      new Set(
+        stats.newProductAlertedIds
+      );
+
     const alerts =
       loadAlerts();
 
@@ -831,10 +849,36 @@ async function scanForNewProducts() {
       const raw of candidates
     ) {
 
+      const productId =
+        String(raw.id);
+
       const existing =
         savedProducts[
-          String(raw.id)
+          productId
         ];
+
+      // IMPORTANT:
+      // Capture old state BEFORE ensureRecord()
+      // changes the existing record.
+      const previousAvailable =
+        existing
+          ? existing.available === true
+          : null;
+
+      const previousPrice =
+        existing
+          ? existing.price
+          : null;
+
+      const previousWasHidden =
+        existing
+          ? existing.wasHidden === true
+          : false;
+
+      const previousHiddenAlertSent =
+        existing
+          ? existing.hiddenAlertSent === true
+          : false;
 
       const available =
         getAvailable(raw);
@@ -929,7 +973,12 @@ async function scanForNewProducts() {
 
       if (!existing) {
 
-        if (wasActuallyNew) {
+        if (
+          wasActuallyNew &&
+          !newProductAlertedIds.has(
+            productId
+          )
+        ) {
 
           stats.newProductsToday++;
 
@@ -1060,6 +1109,20 @@ async function scanForNewProducts() {
             );
           }
 
+          // Permanently remember that this product ID
+          // already received its NEW PRODUCT alert.
+          record.newAlertSent =
+            true;
+
+          newProductAlertedIds.add(
+            productId
+          );
+
+          stats.newProductAlertedIds =
+            Array.from(
+              newProductAlertedIds
+            );
+
         } else {
 
           console.log(
@@ -1074,7 +1137,7 @@ async function scanForNewProducts() {
         // =========================
 
         if (
-          existing.available === false &&
+          previousAvailable === false &&
           product.available === true
         ) {
 
@@ -1107,7 +1170,7 @@ async function scanForNewProducts() {
             channel,
 
             makeEmbed(
-              existing.wasHidden
+              previousWasHidden
                 ? "🚨 HIDDEN PRODUCT IS NOW LIVE"
                 : "🔥 BACK IN STOCK",
 
@@ -1149,7 +1212,7 @@ async function scanForNewProducts() {
         // =========================
 
         if (
-          existing.available === true &&
+          previousAvailable === true &&
           product.available === false
         ) {
 
@@ -1191,9 +1254,9 @@ async function scanForNewProducts() {
         // =========================
 
         if (
-          existing.price &&
+          previousPrice &&
           product.price &&
-          existing.price !==
+          previousPrice !==
             product.price
         ) {
 
@@ -1220,7 +1283,7 @@ async function scanForNewProducts() {
                 {
                   name: "⬇️ Old Price",
                   value:
-                    `$${existing.price}`,
+                    `$${previousPrice}`,
                   inline: true
                 },
                 {
@@ -1249,7 +1312,7 @@ async function scanForNewProducts() {
             true;
 
           if (
-            !record.hiddenAlertSent &&
+            !previousHiddenAlertSent &&
             previousLastScanAt
           ) {
 
@@ -1302,13 +1365,14 @@ async function scanForNewProducts() {
             )
         );
 
+      // Only alert watchlist on a REAL restock.
+      // A brand-new product already has its own NEW alert,
+      // so it cannot generate a second notification here.
       if (
         watchMatch &&
         product.available &&
-        (
-          !existing ||
-          existing.available === false
-        )
+        !wasActuallyNew &&
+        previousAvailable === false
       ) {
 
         await sendToChannel(
@@ -1346,16 +1410,21 @@ async function scanForNewProducts() {
       }
 
       savedProducts[
-        String(raw.id)
+        productId
       ] = record;
 
       processed.push(
-        String(raw.id)
+        productId
       );
     }
 
     stats.lastScanAt =
       scanStartedAt;
+
+    stats.newProductAlertedIds =
+      Array.from(
+        newProductAlertedIds
+      );
 
     saveProducts(
       savedProducts
@@ -1507,10 +1576,6 @@ client.on(
       const lower =
         content.toLowerCase();
 
-      // =========================
-      // PING
-      // =========================
-
       if (
         content === "!ping"
       ) {
@@ -1518,10 +1583,6 @@ client.on(
           "🏓 Pong!"
         );
       }
-
-      // =========================
-      // STATUS
-      // =========================
 
       if (
         content === "!status"
@@ -1531,10 +1592,6 @@ client.on(
           `✅ Online\n📦 Tracking ${Object.keys(loadProducts()).length} products`
         );
       }
-
-      // =========================
-      // STATS
-      // =========================
 
       if (
         content === "!stats"
@@ -1552,10 +1609,6 @@ client.on(
         );
       }
 
-      // =========================
-      // COUNTS
-      // =========================
-
       if (
         content === "!counts"
       ) {
@@ -1572,10 +1625,6 @@ client.on(
           `❌ Sold Out: ${products.filter(p => p.available === false).length}`
         );
       }
-
-      // =========================
-      // DEBUG
-      // =========================
 
       if (
         content === "!debug"
@@ -1597,10 +1646,6 @@ client.on(
           `⏰ Last Scan: ${s.lastScanAt || "Not recorded"}`
         );
       }
-
-      // =========================
-      // HEALTH
-      // =========================
 
       if (
         content === "!health"
@@ -1625,10 +1670,6 @@ client.on(
         );
       }
 
-      // =========================
-      // ALERTS
-      // =========================
-
       if (
         content === "!alerts"
       ) {
@@ -1644,10 +1685,6 @@ client.on(
             : "No alerts recorded yet."
         );
       }
-
-      // =========================
-      // WATCHLIST
-      // =========================
 
       if (
         content === "!watchlist"
@@ -1732,10 +1769,6 @@ client.on(
         );
       }
 
-      // =========================
-      // HIDDEN
-      // =========================
-
       if (
         content === "!hidden"
       ) {
@@ -1770,10 +1803,6 @@ client.on(
           `\n\n📊 Total Hidden: ${hidden.length}`
         );
       }
-
-      // =========================
-      // UPCOMING
-      // =========================
 
       if (
         content === "!upcoming"
@@ -1818,10 +1847,6 @@ client.on(
             .join("\n\n")
         );
       }
-
-      // =========================
-      // LATEST
-      // =========================
 
       if (
         content === "!latest"
@@ -1878,10 +1903,6 @@ client.on(
         );
       }
 
-      // =========================
-      // MOST ACTIVE
-      // =========================
-
       if (
         content === "!hot"
       ) {
@@ -1931,10 +1952,6 @@ client.on(
         );
       }
 
-      // =========================
-      // PRODUCT SEARCH
-      // =========================
-
       if (
         content.startsWith(
           "!product "
@@ -1976,10 +1993,6 @@ client.on(
         );
       }
 
-      // =========================
-      // SUMMARY
-      // =========================
-
       if (
         content === "!summary"
       ) {
@@ -2009,10 +2022,6 @@ client.on(
         );
       }
 
-      // =========================
-      // MANUAL SCAN
-      // =========================
-
       if (
         content === "!scan"
       ) {
@@ -2024,10 +2033,6 @@ client.on(
         );
       }
 
-      // =========================
-      // TEST
-      // =========================
-
       if (
         content === "!testnew"
       ) {
@@ -2036,10 +2041,6 @@ client.on(
           "✅ Test command received. No real product alert was generated."
         );
       }
-
-      // =========================
-      // HELP
-      // =========================
 
       if (
         content === "!help"
