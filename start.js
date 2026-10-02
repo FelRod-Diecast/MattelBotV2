@@ -1,5 +1,4 @@
 // start.js
-// Safe display-only launcher. bot.js remains the source of scanner logic.
 const fs = require("fs");
 const path = require("path");
 
@@ -23,10 +22,7 @@ function parseLaunchTimestamp(value) {
 
 function formatLaunchDate(timestamp) {
   if (!Number.isFinite(timestamp)) return "Unknown";
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Los_Angeles", month: "short", day: "numeric", year: "numeric",
-    hour: "numeric", minute: "2-digit", hour12: true
-  }).format(new Date(timestamp)) + " PT";
+  return new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(timestamp)) + " PT";
 }
 
 function getFutureUpcoming(products, now = Date.now(), limit = 15) {
@@ -56,34 +52,21 @@ function buildSummary(products, stats, now = Date.now()) {
       nextScan = nextMinutes <= 1 ? "~1 min" : `~${nextMinutes} min`;
     }
   }
-  const lines = [
-    "📊 **MattelBot Summary**", "",
-    "📦 **INVENTORY**", `Tracked: **${list.length}**`, `In Stock: **${inStock}**`, `Sold Out: **${soldOut}**`, "",
-    "📈 **TODAY**", `New Products: **${Number(stats?.newProductsToday || 0)}**`, `Restocks: **${Number(stats?.restocksToday || 0)}**`,
-    `Sold Out Events: **${Number(stats?.soldOutToday || 0)}**`, `Price Changes: **${Number(stats?.priceChangesToday || 0)}**`, "",
-    "🚀 **UPCOMING**", `Future Releases: **${futureAll.length}**`
-  ];
-  if (upcoming.length) {
-    for (const item of upcoming) {
-      lines.push(`• ${item.product.title}`);
-      lines.push(`  📅 ${formatLaunchDate(item.launchTimestamp)}`);
-    }
-  } else {
-    lines.push("• No future launch dates currently tracked");
-  }
-  lines.push("", "🚨 **OPPORTUNITIES**", `Hidden: **${hidden}**`, "", "🕐 **SCANNER**",
-    `Last Scan: **${lastScan}**`, `Next Scan: **${nextScan}**`, "Schedule: **Every 5 minutes**");
+  const lines = ["📊 **MattelBot Summary**", "", "📦 **INVENTORY**", `Tracked: **${list.length}**`, `In Stock: **${inStock}**`, `Sold Out: **${soldOut}**`, "", "📈 **TODAY**", `New Products: **${Number(stats?.newProductsToday || 0)}**`, `Restocks: **${Number(stats?.restocksToday || 0)}**`, `Sold Out Events: **${Number(stats?.soldOutToday || 0)}**`, `Price Changes: **${Number(stats?.priceChangesToday || 0)}**`, "", "🚀 **UPCOMING**", `Future Releases: **${futureAll.length}**`];
+  if (upcoming.length) for (const item of upcoming) { lines.push(`• ${item.product.title}`); lines.push(`  📅 ${formatLaunchDate(item.launchTimestamp)}`); }
+  else lines.push("• No future launch dates currently tracked");
+  lines.push("", "🚨 **OPPORTUNITIES**", `Hidden: **${hidden}**`, "", "🕐 **SCANNER**", `Last Scan: **${lastScan}**`, `Next Scan: **${nextScan}**`, "Schedule: **Every 5 minutes**");
   return lines.join("\n");
 }
 
 function patchSource(source) {
   const upcomingPattern = /      if \(\s+content === "!upcoming"\s+\) \{[\s\S]*?\n      \}\n\n      if \(\s+content === "!latest"/;
-  const upcomingReplacement = `      if (\n        content === "!upcoming"\n      ) {\n\n        const upcoming = getFutureUpcoming(loadProducts());\n\n        if (!upcoming.length) {\n          return message.reply("✅ No future launches tracked.");\n        }\n\n        const lines = ["🚀 **UPCOMING HOT WHEELS**", ""];\n\n        upcoming.forEach((item, index) => {\n          lines.push(\n            \`**\${index + 1}. \${item.product.title}**\`,\n            \`📅 \${formatLaunchDate(item.launchTimestamp)}\`,\n            "📦 Status: **UPCOMING**",\n            \`🔗 \${item.product.url || productUrl(item.product.handle)}\`,\n            ""\n          );\n        });\n\n        lines.push(\`📊 **Future releases shown: \${upcoming.length}**\`);\n        return message.reply(lines.join("\\n"));\n      }\n\n      if (content === "!latest"`;
+  const upcomingReplacement = `      if (\n        content === "!upcoming"\n      ) {\n        const upcoming = getFutureUpcoming(loadProducts());\n        if (!upcoming.length) return message.reply("✅ No future launches tracked.");\n        const lines = ["🚀 **UPCOMING HOT WHEELS**", ""];\n        upcoming.forEach((item, index) => {\n          lines.push(\`**\${index + 1}. \${item.product.title}**\`, \`📅 \${formatLaunchDate(item.launchTimestamp)}\`, "📦 Status: **UPCOMING**", \`🔗 \${item.product.url || productUrl(item.product.handle)}\`, "");\n        });\n        lines.push(\`📊 **Future releases shown: \${upcoming.length}**\`);\n        return message.reply(lines.join("\\n"));\n      }\n\n      if (content === "!latest"`;
   if (!upcomingPattern.test(source)) throw new Error("!upcoming block not found; refusing to start unpatched bot.");
   source = source.replace(upcomingPattern, upcomingReplacement);
 
   const summaryPattern = /      if \(\s+content === "!summary"\s+\) \{[\s\S]*?\n      \}\n\n      if \(\s+content === "!scan"/;
-  const summaryReplacement = `      if (\n        content === "!summary"\n      ) {\n        return message.reply(\n          buildSummary(loadProducts(), loadStats())\n        );\n      }\n\n      if (content === "!scan"`;
+  const summaryReplacement = `      if (\n        content === "!summary"\n      ) {\n        return message.reply(buildSummary(loadProducts(), loadStats()));\n      }\n\n      if (content === "!scan"`;
   if (!summaryPattern.test(source)) throw new Error("!summary block not found; refusing to start unpatched bot.");
   source = source.replace(summaryPattern, summaryReplacement);
 
@@ -91,7 +74,6 @@ function patchSource(source) {
   const dailyReplacement = `        await channel.send(\n          buildSummary(products, stats)\n        );`;
   if (!dailyPattern.test(source)) throw new Error("daily summary block not found; refusing to start unpatched bot.");
   source = source.replace(dailyPattern, dailyReplacement);
-
   return source;
 }
 
@@ -100,11 +82,12 @@ function start() {
   const source = fs.readFileSync(botPath, "utf8");
   const patched = patchSource(source);
   const runtimePath = path.join(__dirname, ".bot-runtime.js");
-  fs.writeFileSync(runtimePath, patched, "utf8");
+  const helperSource = `\n${parseLaunchTimestamp.toString()}\n${formatLaunchDate.toString()}\n${getFutureUpcoming.toString()}\n${buildSummary.toString()}\n`;
+  fs.writeFileSync(runtimePath, helperSource + patched, "utf8");
   console.log("🧩 Display patch applied: !upcoming + !summary + daily summary");
   console.log("🛡️ Core bot.js scanner and 5-minute schedule are unchanged.");
   require(runtimePath);
 }
 
 module.exports = { parseLaunchTimestamp, formatLaunchDate, getFutureUpcoming, buildSummary, patchSource };
-if (require.main === module) start();
+if (require.main === "module") start();
