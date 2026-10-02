@@ -61,17 +61,17 @@ function buildSummary(products, stats, now = Date.now()) {
 
 function patchSource(source) {
   const upcomingPattern = /      if \(\s+content === "!upcoming"\s+\) \{[\s\S]*?\n      \}\n\n      if \(\s+content === "!latest"/;
-  const upcomingReplacement = `      if (\n        content === "!upcoming"\n      ) {\n        const upcoming = getFutureUpcoming(loadProducts());\n        if (!upcoming.length) return message.reply("✅ No future launches tracked.");\n        const lines = ["🚀 **UPCOMING HOT WHEELS**", ""];\n        upcoming.forEach((item, index) => {\n          lines.push(\`**\${index + 1}. \${item.product.title}**\`, \`📅 \${formatLaunchDate(item.launchTimestamp)}\`, "📦 Status: **UPCOMING**", \`🔗 \${item.product.url || productUrl(item.product.handle)}\`, "");\n        });\n        lines.push(\`📊 **Future releases shown: \${upcoming.length}**\`);\n        return message.reply(lines.join("\\n"));\n      }\n\n      if (content === "!latest"`;
+  const upcomingReplacement = `      if (\n        content === "!upcoming"\n      ) {\n        const upcoming = globalThis.__MattelBotDisplay.getFutureUpcoming(loadProducts());\n        if (!upcoming.length) return message.reply("✅ No future launches tracked.");\n        const lines = ["🚀 **UPCOMING HOT WHEELS**", ""];\n        upcoming.forEach((item, index) => {\n          lines.push(\`**\${index + 1}. \${item.product.title}**\`, \`📅 \${globalThis.__MattelBotDisplay.formatLaunchDate(item.launchTimestamp)}\`, "📦 Status: **UPCOMING**", \`🔗 \${item.product.url || productUrl(item.product.handle)}\`, "");\n        });\n        lines.push(\`📊 **Future releases shown: \${upcoming.length}**\`);\n        return message.reply(lines.join("\\n"));\n      }\n\n      if (content === "!latest"`;
   if (!upcomingPattern.test(source)) throw new Error("!upcoming block not found; refusing to start unpatched bot.");
   source = source.replace(upcomingPattern, upcomingReplacement);
 
   const summaryPattern = /      if \(\s+content === "!summary"\s+\) \{[\s\S]*?\n      \}\n\n      if \(\s+content === "!scan"/;
-  const summaryReplacement = `      if (\n        content === "!summary"\n      ) {\n        return message.reply(buildSummary(loadProducts(), loadStats()));\n      }\n\n      if (content === "!scan"`;
+  const summaryReplacement = `      if (\n        content === "!summary"\n      ) {\n        return message.reply(globalThis.__MattelBotDisplay.buildSummary(loadProducts(), loadStats()));\n      }\n\n      if (content === "!scan"`;
   if (!summaryPattern.test(source)) throw new Error("!summary block not found; refusing to start unpatched bot.");
   source = source.replace(summaryPattern, summaryReplacement);
 
   const dailyPattern = /        await channel\.send\(\s+"📊 \*\*MattelBot Daily Summary\*\*\\n\\n" \+\s+`📦 Tracking: \$\{Object\.keys\(products\)\.length\}\\n` \+\s+`🆕 New Products: \$\{stats\.newProductsToday\}\\n` \+\s+`🔥 Restocks: \$\{stats\.restocksToday\}\\n` \+\s+`❌ Sold Out: \$\{stats\.soldOutToday\}\\n` \+\s+`💲 Price Changes: \$\{stats\.priceChangesToday\}`\s+\);/;
-  const dailyReplacement = `        await channel.send(\n          buildSummary(products, stats)\n        );`;
+  const dailyReplacement = `        await channel.send(\n          globalThis.__MattelBotDisplay.buildSummary(products, stats)\n        );`;
   if (!dailyPattern.test(source)) throw new Error("daily summary block not found; refusing to start unpatched bot.");
   source = source.replace(dailyPattern, dailyReplacement);
   return source;
@@ -82,8 +82,17 @@ function start() {
   const source = fs.readFileSync(botPath, "utf8");
   const patched = patchSource(source);
   const runtimePath = path.join(__dirname, ".bot-runtime.js");
-  const helperSource = `\n${parseLaunchTimestamp.toString()}\n${formatLaunchDate.toString()}\n${getFutureUpcoming.toString()}\n${buildSummary.toString()}\n`;
-  fs.writeFileSync(runtimePath, helperSource + patched, "utf8");
+
+  // Explicit global namespace: command callbacks in the generated runtime
+  // cannot rely on lexical bindings from this launcher module.
+  globalThis.__MattelBotDisplay = {
+    parseLaunchTimestamp,
+    formatLaunchDate,
+    getFutureUpcoming,
+    buildSummary
+  };
+
+  fs.writeFileSync(runtimePath, patched, "utf8");
   console.log("🧩 Display patch applied: !upcoming + !summary + daily summary");
   console.log("🛡️ Core bot.js scanner and 5-minute schedule are unchanged.");
   require(runtimePath);
