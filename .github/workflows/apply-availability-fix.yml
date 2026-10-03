@@ -2,6 +2,8 @@ name: Apply availability fix
 
 on:
   push:
+    branches:
+      - availability-fix
     paths:
       - ".github/workflows/apply-availability-fix.yml"
 
@@ -12,94 +14,65 @@ jobs:
   patch:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           ref: availability-fix
           fetch-depth: 0
 
       - name: Patch bot.js
+        shell: bash
         run: |
-          python - <<'PY'
+          python3 - <<'PY'
           from pathlib import Path
-          import re
+          p = Path("bot.js")
+          s = p.read_text()
 
-          path = Path("bot.js")
-          text = path.read_text()
-          original = text
-
-          # 1) Replace the narrow launch parser with Mattel preorder/ship-date detection.
           old = '''function parseLaunchDate(text) {
-            if (!text) {
-              return null;
-            }
+  if (!text) {
+    return null;
+  }
 
-            const match =
-              String(text).match(
-                /Launches\\s+([A-Za-z]+\\s+\\d{1,2},\\s+\\d{4}\\s+\\d{1,2}:\\d{2}\\s*(?:am|pm)\\s*PT)/i
-              );
+  const match =
+    String(text).match(
+      /Launches\\s+([A-Za-z]+\\s+\\d{1,2},\\s+\\d{4}\\s+\\d{1,2}:\\d{2}\\s*(?:am|pm)\\s*PT)/i
+    );
 
-            return match
-              ? match[1]
-              : null;
-          }'''
-
+  return match
+    ? match[1]
+    : null;
+}'''
           new = '''function parseUpcomingInfo(text) {
-            if (!text) {
-              return {
-                upcoming: false,
-                launchDate: null
-              };
-            }
+  if (!text) {
+    return { upcoming: false, launchDate: null };
+  }
 
-            const source = String(text);
+  const source = String(text);
 
-            const launchMatch = source.match(
-              /Launches\\s+([A-Za-z]+\\s+\\d{1,2},\\s+\\d{4}(?:\\s+\\d{1,2}:\\d{2}\\s*(?:am|pm)\\s*PT)?)/i
-            );
+  const launchMatch = source.match(
+    /Launches\\s+([A-Za-z]+\\s+\\d{1,2},\\s+\\d{4}(?:\\s+\\d{1,2}:\\d{2}\\s*(?:am|pm)\\s*PT)?)/i
+  );
+  if (launchMatch) {
+    return { upcoming: true, launchDate: launchMatch[1] };
+  }
 
-            if (launchMatch) {
-              return {
-                upcoming: true,
-                launchDate: launchMatch[1]
-              };
-            }
+  const shipMatch = source.match(
+    /Ships\\s+(?:on\\s+or\\s+before|on)\\s+([A-Za-z]+\\s+\\d{1,2},\\s+\\d{4})/i
+  );
+  if (shipMatch) {
+    return { upcoming: true, launchDate: shipMatch[1] };
+  }
 
-            const shipMatch = source.match(
-              /Ships\\s+(?:on\\s+or\\s+before|on)\\s+([A-Za-z]+\\s+\\d{1,2},\\s+\\d{4})/i
-            );
+  if (/\\bpre[-\\s]?order\\b/i.test(source) || /\\bcoming\\s+soon\\b/i.test(source)) {
+    return { upcoming: true, launchDate: null };
+  }
 
-            if (shipMatch) {
-              return {
-                upcoming: true,
-                launchDate: shipMatch[1]
-              };
-            }
+  return { upcoming: false, launchDate: null };
+}'''
+          if old not in s:
+              raise SystemExit("parseLaunchDate block not found")
+          s = s.replace(old, new, 1)
 
-            if (/\\bpre[-\\s]?order\\b/i.test(source)) {
-              return {
-                upcoming: true,
-                launchDate: null
-              };
-            }
-
-            if (/\\bcoming\\s+soon\\b/i.test(source)) {
-              return {
-                upcoming: true,
-                launchDate: null
-              };
-            }
-
-            return {
-              upcoming: false,
-              launchDate: null
-            };
-          }'''
-
-          if old not in text:
-              raise SystemExit("STOP: parseLaunchDate block not found")
-          text = text.replace(old, new, 1)
-
-          # 2) Do not treat generic 'unavailable' text as sold-out evidence.
           old = '''    result.explicitlySoldOut =
       lower.includes("sold out") ||
       lower.includes("out of stock") ||
@@ -107,11 +80,10 @@ jobs:
           new = '''    result.explicitlySoldOut =
       lower.includes("sold out") ||
       lower.includes("out of stock");'''
-          if old not in text:
-              raise SystemExit("STOP: sold-out block not found")
-          text = text.replace(old, new, 1)
+          if old not in s:
+              raise SystemExit("sold-out block not found")
+          s = s.replace(old, new, 1)
 
-          # 3) Use the new parser whenever a product page is fetched.
           old = '''    if (checkLaunch) {
       result.launchDate =
         parseLaunchDate(html);
@@ -122,20 +94,14 @@ jobs:
         );
     }'''
           new = '''    if (checkLaunch) {
-      const upcomingInfo =
-        parseUpcomingInfo(html);
-
-      result.launchDate =
-        upcomingInfo.launchDate;
-
-      result.upcoming =
-        upcomingInfo.upcoming;
+      const upcomingInfo = parseUpcomingInfo(html);
+      result.launchDate = upcomingInfo.launchDate;
+      result.upcoming = upcomingInfo.upcoming;
     }'''
-          if old not in text:
-              raise SystemExit("STOP: checkLaunch block not found")
-          text = text.replace(old, new, 1)
+          if old not in s:
+              raise SystemExit("checkLaunch block not found")
+          s = s.replace(old, new, 1)
 
-          # 4) Preserve the previous upcoming state for transition alerts.
           old = '''      const previousHiddenAlertSent =
         existing
           ? existing.hiddenAlertSent === true
@@ -153,11 +119,10 @@ jobs:
           : false;
 
       const available ='''
-          if old not in text:
-              raise SystemExit("STOP: previous-state anchor not found")
-          text = text.replace(old, new, 1)
+          if old not in s:
+              raise SystemExit("previous-state anchor not found")
+          s = s.replace(old, new, 1)
 
-          # 5) Check product pages on every scan, not only selected titles.
           old = '''        if (
           !available ||
           shouldCheckLaunch
@@ -180,11 +145,10 @@ jobs:
               true
             );
         }'''
-          if old not in text:
-              raise SystemExit("STOP: product-page fetch block not found")
-          text = text.replace(old, new, 1)
+          if old not in s:
+              raise SystemExit("page-info block not found")
+          s = s.replace(old, new, 1)
 
-          # 6) Alert once when an existing product transitions into preorder/upcoming.
           anchor = '''        // =========================
         // RESTOCK
         // =========================
@@ -192,7 +156,7 @@ jobs:
         if (
           previousAvailable === false &&
           product.available === true'''
-          insertion = '''        // =========================
+          insert = '''        // =========================
         // UPCOMING / PRE-ORDER TRANSITION
         // =========================
 
@@ -203,12 +167,7 @@ jobs:
           previousLastScanAt
         ) {
           record.upcomingAlertSent = true;
-
-          addAlert(
-            alerts,
-            `🚀 ${product.title}`
-          );
-
+          addAlert(alerts, `🚀 ${product.title}`);
           await sendToChannel(
             channel,
             makeEmbed(
@@ -216,44 +175,29 @@ jobs:
               0xffa500,
               product,
               [
-                {
-                  name: "📦 Product",
-                  value: product.title
-                },
-                {
-                  name: "🚀 Release / Ship Date",
-                  value: product.launchDate || "Pre-order / Coming Soon",
-                  inline: true
-                },
-                {
-                  name: "💲 Price",
-                  value: `$${product.price || "Unknown"}`,
-                  inline: true
-                }
+                { name: "📦 Product", value: product.title },
+                { name: "🚀 Release / Ship Date", value: product.launchDate || "Pre-order / Coming Soon", inline: true },
+                { name: "💲 Price", value: `$${product.price || "Unknown"}`, inline: true }
               ]
             )
           );
         }
 
 ''' + anchor
-          if anchor not in text:
-              raise SystemExit("STOP: restock anchor not found")
-          text = text.replace(anchor, insertion, 1)
+          if anchor not in s:
+              raise SystemExit("restock anchor not found")
+          s = s.replace(anchor, insert, 1)
 
-          if text == original:
-              raise SystemExit("STOP: no changes were made")
-
-          path.write_text(text)
-          print("availability-fix patch applied")
+          p.write_text(s)
+          print("patched bot.js")
           PY
-
           node --check bot.js
 
-      - name: Commit bot fix and remove one-shot workflow
+      - name: Commit bot.js
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add bot.js
-          git rm .github/workflows/apply-availability-fix.yml
           git commit -m "Fix preorder and upcoming availability detection"
           git push origin availability-fix
