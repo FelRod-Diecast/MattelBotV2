@@ -21,8 +21,9 @@ function parseUpcomingEvidence(html, nowMs = Date.now()) {
   if (preorder) evidence.push({ type: 'preorder' });
   const soldOut = /\b(?:sold\s*out|out\s*of\s*stock|unavailable)\b/i.test(source);
   const addToCart = /\b(?:add to bag|add to cart|buy now)\b/i.test(source);
-  const upcoming = Boolean(launchDate || comingSoon || (preorder && !soldOut && !addToCart));
-  return { upcoming, launchDate, soldOutEvidence: soldOut, buyableEvidence: addToCart, evidence };
+  // A sold-out page is never an upcoming/buyable opportunity, even if its copy still says "coming soon".
+  const upcoming = Boolean(!soldOut && (launchDate || comingSoon || (preorder && !addToCart)));
+  return { upcoming, launchDate, soldOutEvidence: soldOut, buyableEvidence: addToCart, verified: true, evidence };
 }
 function classify(product, previous, pageInfo) {
   const wasAvailable = previous?.available === true;
@@ -31,6 +32,7 @@ function classify(product, previous, pageInfo) {
   const collectionVisible = product.inRelevantCollection === true;
   const pageSoldOut = pageInfo?.soldOutEvidence === true;
   const pageBuyable = pageInfo?.buyableEvidence === true;
+  const pageVerified = pageInfo?.verified === true;
   const upcoming = pageInfo?.upcoming === true && !available && !pageBuyable;
   let hiddenScore = 0;
   const hiddenEvidence = [];
@@ -41,6 +43,10 @@ function classify(product, previous, pageInfo) {
   if (product.price !== null && product.price !== undefined) { hiddenScore += 10; hiddenEvidence.push('price'); }
   if (product.variantCount > 0) { hiddenScore += 10; hiddenEvidence.push('variants'); }
   if (!pageSoldOut) { hiddenScore += 10; hiddenEvidence.push('not-explicitly-sold-out'); }
+  // Never call something hidden on catalog evidence alone. A page verification is required
+  // before the 70-point hidden threshold can be reached; this prevents the first 60-page
+  // verification cap from turning ordinary catalog products into hidden alerts.
+  if (!pageVerified) hiddenScore = Math.min(hiddenScore, 60);
   if (pageSoldOut || upcoming || available || pageBuyable) hiddenScore = 0;
   let status = 'UNKNOWN';
   if (available || pageBuyable) status = 'AVAILABLE';
