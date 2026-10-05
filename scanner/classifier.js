@@ -46,16 +46,18 @@ function classify(product, previous, pageInfo) {
   else if (upcoming) status = 'UPCOMING';
   else if (pageSoldOut) status = 'SOLD_OUT';
   const events = [];
-  if (newlySeen && !upcoming && hiddenScore < 70) events.push('NEW_PRODUCT');
-  if (!wasAvailable && available && previous) events.push('RESTOCK');
-  if (wasAvailable && !available && previous) events.push('SOLD_OUT');
+  const restock = !wasAvailable && available && Boolean(previous);
+  const soldOut = wasAvailable && !available && Boolean(previous);
+  if (newlySeen && !pageSoldOut && !upcoming && hiddenScore < 70) events.push('NEW_PRODUCT');
+  if (restock) events.push('RESTOCK');
+  if (soldOut) events.push('SOLD_OUT');
   if (!previous && upcoming) events.push('UPCOMING_DISCOVERY');
   if (previous && previous.upcoming !== true && upcoming) events.push('UPCOMING_DISCOVERY');
   if (!previous && hiddenScore >= 70) events.push('HIDDEN_DISCOVERY');
   if (previous && Number(previous.hiddenScore || 0) < 70 && hiddenScore >= 70) events.push('HIDDEN_DISCOVERY');
   if (previous && previous.price !== product.price && previous.price != null && product.price != null) events.push('PRICE_CHANGE');
-  if (previous && !wasAvailable && available) events.push('BUYABLE');
-  if (previous && wasAvailable && !available) events.push('UNBUYABLE');
+  if (previous && !restock && !wasAvailable && available) events.push('BUYABLE');
+  if (previous && !soldOut && wasAvailable && !available) events.push('UNBUYABLE');
   return { status, upcoming, launchDate: pageInfo?.launchDate || null, hiddenScore, hiddenEvidence, events };
 }
 module.exports = { parseUpcomingEvidence, classify };
