@@ -9,7 +9,9 @@ class MattelScanner {
   constructor({ channel, logger = console }) { this.channel = channel; this.logger = logger; this.running = false; this.lastCollectionRefresh = 0; this.collectionProductCache = []; }
   async refreshCollectionSurface(nowMs) {
     if (nowMs - this.lastCollectionRefresh < 15 * 60 * 1000 && this.collectionProductCache.length) return;
-    const collections = await fetchCollections();
+    let collections;
+    try { collections = await fetchCollections(); }
+    catch (error) { this.logger.warn(`[DISCOVERY] Collection surface unavailable: ${error.message}`); return; }
     const relevant = collections.filter(collectionIsRelevant).slice(0, 12);
     const combined = [];
     for (const collection of relevant) {
@@ -38,7 +40,7 @@ class MattelScanner {
       let pageChecks = 0;
       for (const [id, product] of Object.entries(discovery)) {
         const previous = previousProducts[id] || previousSnapshot.products[id] || null;
-        const shouldVerifyPage = !previous || product.available === false || previous.available !== product.available || previous.upcoming === true;
+        const shouldVerifyPage = !previous || previous.available !== product.available || previous.upcoming === true || Number(previous.hiddenScore || 0) >= 70;
         let pageInfo = { upcoming: false, launchDate: null, soldOutEvidence: false, buyableEvidence: false, evidence: [] };
         if (shouldVerifyPage && product.handle && pageChecks < 80) {
           try { pageInfo = parseUpcomingEvidence(await fetchProductPage(product.handle), started); pageChecks++; }
