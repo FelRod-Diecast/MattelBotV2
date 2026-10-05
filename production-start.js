@@ -153,7 +153,85 @@ replaceRequired(
     }`
 );
 
-// 4) Prefer a currently available variant for cart links.
+// 4) Preserve the upcoming transition alert when an existing product
+// changes from non-upcoming to a real future launch/pre-order state.
+replaceRequired(
+  "previous upcoming state",
+  /const previousHiddenAlertSent =\n        existing\n          \? existing\.hiddenAlertSent === true\n          : false;\n\n      const available =/,
+  `const previousHiddenAlertSent =
+        existing
+          ? existing.hiddenAlertSent === true
+          : false;
+
+      const previousUpcoming =
+        existing
+          ? existing.upcoming === true
+          : false;
+
+      const available =`
+);
+
+replaceRequired(
+  "upcoming transition alert",
+  /        \/\/ =========================\n        \/\/ RESTOCK\n        \/\/ =========================/,
+  `        // =========================
+        // UPCOMING / PRE-ORDER TRANSITION
+        // =========================
+
+        if (
+          previousUpcoming === false &&
+          product.upcoming === true &&
+          !record.upcomingAlertSent &&
+          previousLastScanAt
+        ) {
+          record.upcomingAlertSent = true;
+
+          addAlert(
+            alerts,
+            \`🚀 \${product.title}\`
+          );
+
+          await sendToChannel(
+            channel,
+            makeEmbed(
+              "🚀 UPCOMING / PRE-ORDER",
+              0xffa500,
+              product,
+              [
+                {
+                  name: "📦 Product",
+                  value: product.title
+                },
+                {
+                  name: "🚀 Release / Ship Date",
+                  value: product.launchDate || "Pre-order / Coming Soon",
+                  inline: true
+                },
+                {
+                  name: "💲 Price",
+                  value: \`$\${product.price || "Unknown"}\`,
+                  inline: true
+                }
+              ]
+            )
+          );
+        }
+
+        // =========================
+        // RESTOCK
+        // =========================
+        // =========================
+        // RESTOCK
+        // =========================`
+);
+
+// Upcoming products are opportunities, not hidden products.
+source = source.replace(
+  /(!product\.explicitlySoldOut\s*&&\s*)!product\.launchDate/g,
+  `$1!product.upcoming &&\n          !product.launchDate`
+);
+
+// 5) Prefer a currently available variant for cart links.
 replaceRequired(
   "variant selection",
   /function getVariantId\(product\) \{\n  return \(\n    product\?\.variants\?\.\[0\]\?\.id \|\|\n    null\n  \);\n\}/,
@@ -178,7 +256,7 @@ replaceRequired(
 }`
 );
 
-// 5) Direct Shopify cart quantity buttons.
+// 6) Direct Shopify cart quantity buttons.
 replaceRequired(
   "cart buttons",
   /function cartRow\(variantId\)\s*\{[\s\S]*?\}\s*async function sendToChannel/,
@@ -211,7 +289,7 @@ replaceRequired(
 async function sendToChannel`
 );
 
-// 6) Every notification gets at least a product button; in-stock events get cart buttons.
+// 7) Every notification gets at least a product button; in-stock events get cart buttons.
 replaceRequired(
   "product fallback button",
   /async function sendToChannel\([\s\S]*?\}\s*function addAlert/,
@@ -246,7 +324,7 @@ replaceRequired(
 function addAlert`
 );
 
-// 7) Prevent a stuck Mattel request from blocking the 5-minute scanner.
+// 8) Prevent a stuck Mattel request from blocking the 5-minute scanner.
 replaceRequired(
   "catalog timeout",
   /await fetch\(url, \{\n        headers: \{\n          "User-Agent":\n            "Mozilla\/5\.0 MattelBotV2"\n        \}\n      \}\);/,
@@ -274,7 +352,7 @@ replaceRequired(
       );`
 );
 
-// 8) Keep the 5-minute scheduler alive even while the initial scan is running.
+// 9) Keep the 5-minute scheduler alive even while the initial scan is running.
 replaceRequired(
   "scanner startup order",
   /startDailySummary\(\);\n\n    await scanForNewProducts\(\);\n\n    startScanner\(\);/,
@@ -285,7 +363,7 @@ replaceRequired(
     await scanForNewProducts();`
 );
 
-// 9) Remove the Discord.js v15 deprecation warning.
+// 10) Remove the Discord.js v15 deprecation warning.
 source = source.replace(
   /client\.once\(\s*"ready"\s*,/g,
   'client.once("clientReady",'
