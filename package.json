@@ -1,9 +1,10 @@
 {
   "name": "mattel-bot-v2",
-  "version": "1.0.0",
-  "main": "bot.js",
+  "version": "2.0.0",
+  "main": "scanner-bot.js",
   "scripts": {
-    "start": "node production-start.js"
+    "start": "node scanner-bot.js",
+    "check": "node --check scanner-bot.js && node --check scanner/index.js && node --check scanner/catalog.js && node --check scanner/discovery.js && node --check scanner/classifier.js && node --check scanner/notifier.js && node --check scanner/storage.js"
   },
   "dependencies": {
     "discord.js": "^14.27.0",
