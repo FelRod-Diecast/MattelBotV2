@@ -39,13 +39,13 @@ function classify(product, previous, pageInfo) {
   if (product.price !== null && product.price !== undefined) { hiddenScore += 10; hiddenEvidence.push('price'); }
   if (product.variantCount > 0) { hiddenScore += 10; hiddenEvidence.push('variants'); }
   if (!pageSoldOut) { hiddenScore += 10; hiddenEvidence.push('not-explicitly-sold-out'); }
-  if (upcoming || available) hiddenScore = 0;
+  if (pageSoldOut || upcoming || available) hiddenScore = 0;
   let status = 'UNKNOWN';
   if (available || pageBuyable) status = 'AVAILABLE';
   else if (upcoming) status = 'UPCOMING';
   else if (pageSoldOut) status = 'SOLD_OUT';
   const events = [];
-  if (newlySeen) events.push('NEW_PRODUCT');
+  if (newlySeen && !upcoming && hiddenScore < 70) events.push('NEW_PRODUCT');
   if (!wasAvailable && available && previous) events.push('RESTOCK');
   if (wasAvailable && !available && previous) events.push('SOLD_OUT');
   if (!previous && upcoming) events.push('UPCOMING_DISCOVERY');
@@ -53,7 +53,6 @@ function classify(product, previous, pageInfo) {
   if (!previous && hiddenScore >= 70) events.push('HIDDEN_DISCOVERY');
   if (previous && Number(previous.hiddenScore || 0) < 70 && hiddenScore >= 70) events.push('HIDDEN_DISCOVERY');
   if (previous && previous.price !== product.price && previous.price != null && product.price != null) events.push('PRICE_CHANGE');
-  if (!previous && available) events.push('BUYABLE');
   if (previous && !wasAvailable && available) events.push('BUYABLE');
   if (previous && wasAvailable && !available) events.push('UNBUYABLE');
   return { status, upcoming, launchDate: pageInfo?.launchDate || null, hiddenScore, hiddenEvidence, events };
