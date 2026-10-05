@@ -21,7 +21,8 @@ function parseUpcomingEvidence(html, nowMs = Date.now()) {
   if (preorder) evidence.push({ type: 'preorder' });
   const soldOut = /\b(?:sold\s*out|out\s*of\s*stock|unavailable)\b/i.test(source);
   const addToCart = /\b(?:add to bag|add to cart|buy now)\b/i.test(source);
-  return { upcoming: Boolean(launchDate || comingSoon || (preorder && !soldOut)), launchDate, soldOutEvidence: soldOut, buyableEvidence: addToCart, evidence };
+  const upcoming = Boolean(launchDate || comingSoon || (preorder && !soldOut && !addToCart));
+  return { upcoming, launchDate, soldOutEvidence: soldOut, buyableEvidence: addToCart, evidence };
 }
 function classify(product, previous, pageInfo) {
   const wasAvailable = previous?.available === true;
@@ -30,7 +31,7 @@ function classify(product, previous, pageInfo) {
   const collectionVisible = product.inRelevantCollection === true;
   const pageSoldOut = pageInfo?.soldOutEvidence === true;
   const pageBuyable = pageInfo?.buyableEvidence === true;
-  const upcoming = pageInfo?.upcoming === true && !available;
+  const upcoming = pageInfo?.upcoming === true && !available && !pageBuyable;
   let hiddenScore = 0;
   const hiddenEvidence = [];
   if (newlySeen) { hiddenScore += 25; hiddenEvidence.push('new-to-scanner'); }
@@ -40,7 +41,7 @@ function classify(product, previous, pageInfo) {
   if (product.price !== null && product.price !== undefined) { hiddenScore += 10; hiddenEvidence.push('price'); }
   if (product.variantCount > 0) { hiddenScore += 10; hiddenEvidence.push('variants'); }
   if (!pageSoldOut) { hiddenScore += 10; hiddenEvidence.push('not-explicitly-sold-out'); }
-  if (pageSoldOut || upcoming || available) hiddenScore = 0;
+  if (pageSoldOut || upcoming || available || pageBuyable) hiddenScore = 0;
   let status = 'UNKNOWN';
   if (available || pageBuyable) status = 'AVAILABLE';
   else if (upcoming) status = 'UPCOMING';
@@ -48,7 +49,7 @@ function classify(product, previous, pageInfo) {
   const events = [];
   const restock = !wasAvailable && available && Boolean(previous);
   const soldOut = wasAvailable && !available && Boolean(previous);
-  if (newlySeen && !pageSoldOut && !upcoming && hiddenScore < 70) events.push('NEW_PRODUCT');
+  if (newlySeen && !pageSoldOut && !upcoming && !pageBuyable && hiddenScore < 70) events.push('NEW_PRODUCT');
   if (restock) events.push('RESTOCK');
   if (soldOut) events.push('SOLD_OUT');
   if (!previous && upcoming) events.push('UPCOMING_DISCOVERY');
