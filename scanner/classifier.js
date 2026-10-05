@@ -1,6 +1,7 @@
 function parseFutureDate(value, nowMs) {
   if (!value) return null;
-  const parsed = Date.parse(value);
+  const normalized = String(value).replace(/\s+PT\b/i, '');
+  const parsed = Date.parse(normalized);
   return Number.isFinite(parsed) && parsed > nowMs ? parsed : null;
 }
 function stripHtml(text) {
