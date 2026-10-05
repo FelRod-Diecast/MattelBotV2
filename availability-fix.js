@@ -1,6 +1,7 @@
 // Runtime availability/upcoming patch for MattelBotV2.
 // Keeps the existing bot logic intact while applying the current
-// preorder/ship-date detection fix before bot.js starts.
+// preorder/ship-date detection fix, Discord cart links, and scanner
+// reliability improvements before bot.js starts.
 
 const fs = require("fs");
 const path = require("path");
@@ -230,6 +231,210 @@ source = source.replace(
             !product.launchDate`
 );
 
+// =========================
+// DISCORD CART / PRODUCT LINKS
+// =========================
+
+const oldVariantHelper = `function getVariantId(product) {
+  return (
+    product?.variants?.[0]?.id ||
+    null
+  );
+}`;
+
+const newVariantHelper = `function getVariantId(product) {
+  const variants =
+    Array.isArray(product?.variants)
+      ? product.variants
+      : [];
+
+  const availableVariant =
+    variants.find(
+      variant =>
+        variant?.available === true &&
+        variant?.id
+    );
+
+  return (
+    availableVariant?.id ||
+    variants.find(variant => variant?.id)?.id ||
+    null
+  );
+}`;
+
+if (!source.includes(oldVariantHelper)) {
+  throw new Error("Discord patch stopped: getVariantId block not found.");
+}
+source = source.replace(oldVariantHelper, newVariantHelper);
+
+const oldCartRow = `function cartRow(variantId) {
+  if (!variantId) {
+    return null;
+  }
+
+  return new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setLabel("🛒 View Product")
+        .setStyle(
+          ButtonStyle.Link
+        )
+        .setURL(
+          "https://creations.mattel.com/"
+        )
+    );
+}`;
+
+const newCartRow = `function cartRow(variantId) {
+  if (!variantId) {
+    return null;
+  }
+
+  return new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setLabel("🛒 QTY 2")
+        .setStyle(ButtonStyle.Link)
+        .setURL(\`https://creations.mattel.com/cart/\${variantId}:2\`),
+      new ButtonBuilder()
+        .setLabel("🛒 QTY 10")
+        .setStyle(ButtonStyle.Link)
+        .setURL(\`https://creations.mattel.com/cart/\${variantId}:10\`),
+      new ButtonBuilder()
+        .setLabel("🛒 QTY 20")
+        .setStyle(ButtonStyle.Link)
+        .setURL(\`https://creations.mattel.com/cart/\${variantId}:20\`),
+      new ButtonBuilder()
+        .setLabel("🛒 QTY 50")
+        .setStyle(ButtonStyle.Link)
+        .setURL(\`https://creations.mattel.com/cart/\${variantId}:50\`)
+    );
+}`;
+
+if (!source.includes(oldCartRow)) {
+  throw new Error("Discord patch stopped: cartRow block not found.");
+}
+source = source.replace(oldCartRow, newCartRow);
+
+const oldSendToChannel = `async function sendToChannel(
+  channel,
+  embed,
+  row = null
+) {
+  const payload = {
+    embeds: [embed]
+  };
+
+  if (row) {
+    payload.components = [row];
+  }
+
+  await channel.send(
+    payload
+  );
+}`;
+
+const newSendToChannel = `async function sendToChannel(
+  channel,
+  embed,
+  row = null
+) {
+  const payload = {
+    embeds: [embed]
+  };
+
+  const effectiveRow =
+    row ||
+    (embed?.data?.url
+      ? new ActionRowBuilder()
+          .addComponents(
+            new ButtonBuilder()
+              .setLabel("🔗 VIEW PRODUCT")
+              .setStyle(ButtonStyle.Link)
+              .setURL(embed.data.url)
+          )
+      : null);
+
+  if (effectiveRow) {
+    payload.components = [effectiveRow];
+  }
+
+  await channel.send(
+    payload
+  );
+}`;
+
+if (!source.includes(oldSendToChannel)) {
+  throw new Error("Discord patch stopped: sendToChannel block not found.");
+}
+source = source.replace(oldSendToChannel, newSendToChannel);
+
+// =========================
+// SCANNER RELIABILITY
+// =========================
+
+const oldCatalogFetch = `      await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 MattelBotV2"
+        }
+      });`;
+const newCatalogFetch = `      await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 MattelBotV2"
+        },
+        signal: AbortSignal.timeout(15000)
+      });`;
+
+if (!source.includes(oldCatalogFetch)) {
+  throw new Error("Scanner patch stopped: catalog fetch block not found.");
+}
+source = source.replace(oldCatalogFetch, newCatalogFetch);
+
+const oldProductFetch = `      await fetch(
+        productUrl(handle),
+        {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 MattelBotV2"
+          }
+        }
+      );`;
+const newProductFetch = `      await fetch(
+        productUrl(handle),
+        {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 MattelBotV2"
+          },
+          signal: AbortSignal.timeout(15000)
+        }
+      );`;
+
+if (!source.includes(oldProductFetch)) {
+  throw new Error("Scanner patch stopped: product-page fetch block not found.");
+}
+source = source.replace(oldProductFetch, newProductFetch);
+
+const oldReady = `    startDailySummary();
+
+    await scanForNewProducts();
+
+    startScanner();`;
+const newReady = `    startDailySummary();
+
+    startScanner();
+
+    await scanForNewProducts();`;
+
+if (!source.includes(oldReady)) {
+  throw new Error("Scanner patch stopped: ready/startup block not found.");
+}
+source = source.replace(oldReady, newReady);
+
 console.log("[AVAILABILITY-FIX] Preorder/upcoming patch applied to bot.js");
+console.log("[DISCORD-FIX] Direct Shopify cart links + product buttons applied");
+console.log("[SCANNER-FIX] Fetch timeouts + scheduler startup guard applied");
 
 eval(source);
