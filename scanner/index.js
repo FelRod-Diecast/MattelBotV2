@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { fetchCatalog, fetchCollections, fetchCollectionProducts, fetchProductPage } = require('./catalog');
+const { fetchCatalog, fetchCollections, fetchCollectionProducts, fetchProductJson, fetchProductPage } = require('./catalog');
 const { collectionIsRelevant, buildDiscovery } = require('./discovery');
 const { parseUpcomingEvidence, classify } = require('./classifier');
 const { loadProducts, saveProducts, loadSnapshot, saveSnapshot, loadEvents, saveEvents, loadState, saveState, nextEventId, bootstrapLegacy } = require('./storage');
@@ -37,15 +37,36 @@ class MattelScanner {
       const discovery = buildDiscovery(catalog, this.collectionProductCache, new Date(started).toISOString());
       const current = {};
       const emitted = [];
+      let jsonChecks = 0;
       let pageChecks = 0;
       for (const [id, product] of Object.entries(discovery)) {
         const previous = previousProducts[id] || previousSnapshot.products[id] || null;
-        const shouldVerifyPage = !previous || previous.available !== product.available || previous.upcoming === true || Number(previous.hiddenScore || 0) >= 70;
+        const shouldVerify = !previous || previous.available !== product.available || previous.upcoming === true || Number(previous.hiddenScore || 0) >= 70;
         let pageInfo = { upcoming: false, launchDate: null, soldOutEvidence: false, buyableEvidence: false, evidence: [] };
-        if (shouldVerifyPage && product.handle && pageChecks < 80) {
-          try { pageInfo = parseUpcomingEvidence(await fetchProductPage(product.handle), started); pageChecks++; }
-          catch (error) { this.logger.warn(`[VERIFY] ${product.handle}: ${error.message}`); }
+
+        if (shouldVerify && product.handle && jsonChecks < 80) {
+          try {
+            const data = await fetchProductJson(product.handle);
+            const live = data?.product || data;
+            const variants = Array.isArray(live?.variants) ? live.variants : [];
+            const availableVariants = variants.filter(v => v?.available === true && v?.id);
+            product.available = live?.available === true || availableVariants.length > 0;
+            product.availableVariantIds = availableVariants.map(v => String(v.id));
+            product.variantIds = variants.filter(v => v?.id).map(v => String(v.id));
+            product.variantCount = variants.length;
+            product.price = availableVariants[0]?.price ?? variants[0]?.price ?? live?.price ?? product.price;
+            jsonChecks++;
+          } catch (error) {
+            this.logger.warn(`[VERIFY-JSON] ${product.handle}: ${error.message}`);
+          }
         }
+
+        const needsPageEvidence = !product.available || previous?.upcoming === true || Number(previous?.hiddenScore || 0) >= 70 || !previous;
+        if (needsPageEvidence && product.handle && pageChecks < 60) {
+          try { pageInfo = parseUpcomingEvidence(await fetchProductPage(product.handle), started); pageChecks++; }
+          catch (error) { this.logger.warn(`[VERIFY-PAGE] ${product.handle}: ${error.message}`); }
+        }
+
         const result = classify(product, previous, pageInfo);
         Object.assign(product, {
           status: result.status, upcoming: result.upcoming, launchDate: result.launchDate,
@@ -70,8 +91,8 @@ class MattelScanner {
       for (const event of emitted) {
         if (['NEW_PRODUCT','HIDDEN_DISCOVERY','UPCOMING_DISCOVERY','RESTOCK','BUYABLE'].includes(event.type)) await notify(this.channel, event.type, current[event.productId]);
       }
-      this.logger.log(`[SCAN] Complete: ${Object.keys(current).length} Hot Wheels products; ${pageChecks} page verifications; ${emitted.length} events`);
-      return { scanned: Object.keys(current).length, pageChecks, events: emitted };
+      this.logger.log(`[SCAN] Complete: ${Object.keys(current).length} Hot Wheels products; JSON checks ${jsonChecks}; page checks ${pageChecks}; ${emitted.length} events`);
+      return { scanned: Object.keys(current).length, jsonChecks, pageChecks, events: emitted };
     } catch (error) {
       state.consecutiveFailures = Number(state.consecutiveFailures || 0) + 1; saveState(state); this.logger.error('[SCAN] Failed:', error); throw error;
     } finally { this.running = false; }
