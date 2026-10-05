@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const { fetchCatalog, fetchCollections, fetchCollectionProducts, fetchProductPage } = require('./catalog');
 const { collectionIsRelevant, buildDiscovery } = require('./discovery');
 const { parseUpcomingEvidence, classify } = require('./classifier');
-const { loadProducts, saveProducts, loadSnapshot, saveSnapshot, loadEvents, saveEvents, loadState, saveState, nextEventId } = require('./storage');
+const { loadProducts, saveProducts, loadSnapshot, saveSnapshot, loadEvents, saveEvents, loadState, saveState, nextEventId, bootstrapLegacy } = require('./storage');
 const { notify } = require('./notifier');
 
 class MattelScanner {
@@ -24,6 +24,7 @@ class MattelScanner {
     if (this.running) return { skipped: true };
     this.running = true;
     const started = Date.now();
+    bootstrapLegacy();
     const state = loadState();
     const previousSnapshot = loadSnapshot();
     const previousProducts = loadProducts();
@@ -62,13 +63,8 @@ class MattelScanner {
         }
       }
       const catalogHash = crypto.createHash('sha256').update(JSON.stringify(Object.keys(current).sort())).digest('hex');
-      saveProducts(current);
-      saveSnapshot({ scannedAt: new Date(started).toISOString(), products: current });
-      saveEvents(events);
-      state.lastSuccessfulScanAt = new Date(started).toISOString();
-      state.lastCatalogHash = catalogHash;
-      state.consecutiveFailures = 0;
-      saveState(state);
+      saveProducts(current); saveSnapshot({ scannedAt: new Date(started).toISOString(), products: current }); saveEvents(events);
+      state.lastSuccessfulScanAt = new Date(started).toISOString(); state.lastCatalogHash = catalogHash; state.consecutiveFailures = 0; saveState(state);
       for (const event of emitted) {
         if (['NEW_PRODUCT','HIDDEN_DISCOVERY','UPCOMING_DISCOVERY','RESTOCK','BUYABLE'].includes(event.type)) await notify(this.channel, event.type, current[event.productId]);
       }
