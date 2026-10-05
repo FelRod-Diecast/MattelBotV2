@@ -42,7 +42,7 @@ class MattelScanner {
       for (const [id, product] of Object.entries(discovery)) {
         const previous = previousProducts[id] || previousSnapshot.products[id] || null;
         const shouldVerify = !previous || previous.available !== product.available || previous.upcoming === true || Number(previous.hiddenScore || 0) >= 70;
-        let pageInfo = { upcoming: false, launchDate: null, soldOutEvidence: false, buyableEvidence: false, evidence: [] };
+          let pageInfo = { upcoming: false, launchDate: null, soldOutEvidence: false, buyableEvidence: false, verified: false, evidence: [] };
 
         if (shouldVerify && product.handle && jsonChecks < 80) {
           try {
@@ -79,6 +79,9 @@ class MattelScanner {
         });
         current[id] = product;
         for (const eventType of result.events) {
+          // Legacy bootstrap establishes the baseline. Never replay its historical state
+          // as fresh notifications during the migration scan.
+          if (bootstrapped && ['RESTOCK','SOLD_OUT','BUYABLE','UNBUYABLE','PRICE_CHANGE','NEW_PRODUCT','HIDDEN_DISCOVERY','UPCOMING_DISCOVERY'].includes(eventType)) continue;
           const duplicate = events.some(e => e.productId === id && e.type === eventType && Date.now() - Date.parse(e.detectedAt || 0) < 10 * 60 * 1000);
           if (duplicate) continue;
           const event = { id: nextEventId(state), type: eventType, productId: id, handle: product.handle, title: product.title, detectedAt: new Date().toISOString(), status: product.status, launchDate: product.launchDate, price: product.price, source: 'Mattel Creations', evidence: { hiddenScore: product.hiddenScore, hiddenEvidence: product.hiddenEvidence, pageEvidence: product.pageEvidence } };
