@@ -333,6 +333,26 @@ if (!source.includes(oldRecordAnchor)) {
 }
 source = source.replace(oldRecordAnchor, newRecordAnchor);
 
+// Prevent the original NEW PRODUCT branch from sending a second Upcoming alert
+// after the discovery block above already announced it.
+const oldUpcomingBranch = [
+  "          if (",
+  "            product.upcoming",
+  "          ) {"
+].join("\\n");
+
+const newUpcomingBranch = [
+  "          if (",
+  "            product.upcoming &&",
+  "            !record.upcomingAlertSent",
+  "          ) {"
+].join("\\n");
+
+if (!source.includes(oldUpcomingBranch)) {
+  throw new Error("Upcoming duplicate-alert patch stopped: branch not found.");
+}
+source = source.replace(oldUpcomingBranch, newUpcomingBranch);
+
 // =========================
 // DISCORD CART / PRODUCT LINKS
 // =========================
