@@ -191,7 +191,6 @@ replaceRequired(
           (product.launchDate || "PREORDER");
 
         if (
-          previousUpcoming === false &&
           product.upcoming === true &&
           previousLastScanAt &&
           record.upcomingAlertKey !== upcomingAlertKey
