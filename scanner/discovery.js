@@ -31,6 +31,9 @@ function normalizeProduct(product, source, seenAt) {
     image: product?.images?.[0]?.src || product?.featured_image || product?.image || null,
     createdAt: product?.created_at || product?.createdAt || null,
     publishedAt: product?.published_at || product?.publishedAt || null,
+    // Keep the catalog signal separate from the live product verification signal.
+    // Mattel's catalog availability can disagree with /products/{handle}.json.
+    catalogAvailable: variants.available,
     available: variants.available, availableVariantIds: variants.availableVariantIds,
     variantIds: variants.variantIds, variantCount: variants.variantCount, price: variants.price,
     source, firstObservedAt: seenAt
