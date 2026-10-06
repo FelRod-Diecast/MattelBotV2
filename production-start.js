@@ -149,6 +149,17 @@ replaceRequired(
 );
 
 replaceRequired(
+  "new product upcoming alert key",
+  /record\.upcomingAlertSent\s*=\s*true;/,
+  `record.upcomingAlertSent = true;
+
+            record.upcomingAlertKey =
+              product.handle +
+              "|" +
+              (product.launchDate || "PREORDER");`
+);
+
+replaceRequired(
   "previous upcoming state",
   /const previousHiddenAlertSent =\n        existing\n          \? existing\.hiddenAlertSent === true\n          : false;\n\n      const available =/,
   `const previousHiddenAlertSent =
