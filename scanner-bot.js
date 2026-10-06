@@ -9,11 +9,15 @@ let scanner;
 
 function products() { return Object.values(loadProducts()); }
 
-client.once('ready', async () => {
+client.once('clientReady', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
   const channel = CHANNEL_ID ? await client.channels.fetch(CHANNEL_ID).catch(() => null) : null;
   scanner = new MattelScanner({ channel });
-  await scanner.scan();
+  try {
+    await scanner.scan();
+  } catch (error) {
+    console.error('[SCAN] Initial scan failed; bot will remain online and retry on the 5-minute cycle:', error.message);
+  }
   setInterval(() => scanner.scan().catch(error => console.error('[SCAN] Scheduled failure', error.message)), 5 * 60 * 1000);
   console.log('✅ Scanner Engine started - 5 minute catalog cycle; candidate verification is selective');
 });
