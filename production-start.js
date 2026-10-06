@@ -172,6 +172,9 @@ replaceRequired(
           ? existing.upcoming === true
           : false;
 
+      const previousUpcomingAlertKey =
+        existing?.upcomingAlertKey || null;
+
       const available =`
 );
 
@@ -182,13 +185,19 @@ replaceRequired(
         // UPCOMING / PRE-ORDER TRANSITION
         // =========================
 
+        const upcomingAlertKey =
+          product.handle +
+          "|" +
+          (product.launchDate || "PREORDER");
+
         if (
           previousUpcoming === false &&
           product.upcoming === true &&
-          !record.upcomingAlertSent &&
-          previousLastScanAt
+          previousLastScanAt &&
+          record.upcomingAlertKey !== upcomingAlertKey
         ) {
           record.upcomingAlertSent = true;
+          record.upcomingAlertKey = upcomingAlertKey;
 
           addAlert(
             alerts,
