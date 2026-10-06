@@ -26,7 +26,7 @@ class MattelScanner {
     if (this.running) return { skipped: true };
     this.running = true;
     const started = Date.now();
-    bootstrapLegacy();
+    const bootstrapped = bootstrapLegacy();
     const state = loadState();
     const previousSnapshot = loadSnapshot();
     const previousProducts = loadProducts();
