@@ -232,6 +232,108 @@ source = source.replace(
 );
 
 // =========================
+// UPCOMING DISCOVERY FOR PREVIOUSLY SEEN PRODUCTS
+// =========================
+
+const oldRecordAnchor = [
+  "      const record =",
+  "        ensureRecord(",
+  "          existing,",
+  "          product,",
+  "          now",
+  "        );",
+  "",
+  "      // =========================",
+  "      // NEW PRODUCT",
+  "      // ========================="
+].join("\\n");
+
+const newRecordAnchor = [
+  "      const record =",
+  "        ensureRecord(",
+  "          existing,",
+  "          product,",
+  "          now",
+  "        );",
+  "",
+  "      // =========================",
+  "      // UPCOMING DISCOVERY",
+  "      // =========================",
+  "      // A product may already exist in our saved catalog before Mattel",
+  "      // exposes its launch date. Do not require a brand-new catalog",
+  "      // record before sending the Upcoming alert.",
+  "      const launchTimestamp =",
+  "        product.launchDate",
+  "          ? Date.parse(",
+  "              product.launchDate.replace(",
+  "                \\\"PT\\\",",
+  "                \\\"\\\"",
+  "              )",
+  "            )",
+  "          : null;",
+  "",
+  "      const futureOrUndatedUpcoming =",
+  "        product.upcoming &&",
+  "        (",
+  "          !product.launchDate ||",
+  "          !Number.isFinite(",
+  "            launchTimestamp",
+  "          ) ||",
+  "          launchTimestamp > Date.now()",
+  "        );",
+  "",
+  "      if (",
+  "        futureOrUndatedUpcoming &&",
+  "        !record.upcomingAlertSent &&",
+  "        previousLastScanAt",
+  "      ) {",
+  "        record.upcomingAlertSent = true;",
+  "",
+  "        addAlert(",
+  "          alerts,",
+  "          \\\"🚀 \\\" + product.title",
+  "        );",
+  "",
+  "        await sendToChannel(",
+  "          channel,",
+  "          makeEmbed(",
+  "            \\\"🚀 UPCOMING LAUNCH\\\",",
+  "            0xffa500,",
+  "            product,",
+  "            [",
+  "              {",
+  "                name: \\\"📦 Product\\\",",
+  "                value: product.title",
+  "              },",
+  "              {",
+  "                name: \\\"🚀 Launch Date\\\",",
+  "                value:",
+  "                  product.launchDate ||",
+  "                  \\\"Mattel Launch Scheduled\\\",",
+  "                inline: true",
+  "              },",
+  "              {",
+  "                name: \\\"💲 Price\\\",",
+  "                value:",
+  "                  \\\"$\\\" + (product.price || \\\"Unknown\\\"),",
+  "                inline: true",
+  "              }",
+  "            ]",
+  "          )",
+  "        );",
+  "      }",
+  "",
+  "      // =========================",
+  "      // NEW PRODUCT",
+  "      // ========================="
+].join("\\n");
+
+if (!source.includes(oldRecordAnchor)) {
+  throw new Error("Upcoming discovery patch stopped: record anchor not found.");
+}
+source = source.replace(oldRecordAnchor, newRecordAnchor);
+
+// =========================
 // DISCORD CART / PRODUCT LINKS
 // =========================
 
