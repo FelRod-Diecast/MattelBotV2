@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "RLC QuickBuy Assistant",
+  "version": "0.1.0",
+  "description": "Rapid RLC drop preparation and availability assistant for Mattel Creations.",
+  "permissions": ["storage", "notifications", "tabs"],
+  "host_permissions": ["https://creations.mattel.com/*"],
+  "action": {"default_title": "RLC QuickBuy Assistant", "default_popup": "popup.html"},
+  "background": {"service_worker": "background.js"},
+  "content_scripts": [{
+    "matches": ["https://creations.mattel.com/products/*"],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }]
+}
