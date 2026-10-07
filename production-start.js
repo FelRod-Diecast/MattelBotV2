@@ -66,8 +66,6 @@ replaceRequired(
         todayPTText + " UTC"
       );
 
-    // Treat the entire Mattel launch day as upcoming.
-    // This avoids relying on Node's parsing of the "PT" abbreviation.
     return (
       Number.isFinite(launchDay) &&
       Number.isFinite(todayPT) &&
@@ -121,8 +119,6 @@ replaceRequired(
 // MATTEL PRODUCT CATALOG`
 );
 
-// 2) Fetch product-page launch data for all Hot Wheels candidates.
-// The parser itself now decides whether the date is actually future.
 replaceRequired(
   "product page fetch",
   /await fetchProductPageInfo\(\s*raw\.handle,\s*shouldCheckLaunch\s*\)/,
@@ -132,7 +128,6 @@ replaceRequired(
           )`
 );
 
-// 3) Make sold-out detection happen before pre-order/coming-soon is accepted.
 replaceRequired(
   "upcoming sold-out guard",
   /result\.explicitlySoldOut =\n      lower\.includes\("sold out"\) \|\|\n      lower\.includes\("out of stock"\) \|\|\n      lower\.includes\("unavailable"\);\n\n    if \(checkLaunch\) \{\n      result\.launchDate =\n        parseLaunchDate\(html\);\n\n      result\.upcoming =\n        Boolean\(\n          result\.launchDate\n        \);\n    \}/,
@@ -153,8 +148,17 @@ replaceRequired(
     }`
 );
 
-// 4) Preserve the upcoming transition alert when an existing product
-// changes from non-upcoming to a real future launch/pre-order state.
+replaceRequired(
+  "new product upcoming alert key",
+  /record\.upcomingAlertSent\s*=\s*true;/,
+  `record.upcomingAlertSent = true;
+
+            record.upcomingAlertKey =
+              product.handle +
+              "|" +
+              (product.launchDate || "PREORDER");`
+);
+
 replaceRequired(
   "previous upcoming state",
   /const previousHiddenAlertSent =\n        existing\n          \? existing\.hiddenAlertSent === true\n          : false;\n\n      const available =/,
@@ -168,6 +172,9 @@ replaceRequired(
           ? existing.upcoming === true
           : false;
 
+      const previousUpcomingAlertKey =
+        existing?.upcomingAlertKey || null;
+
       const available =`
 );
 
@@ -178,13 +185,18 @@ replaceRequired(
         // UPCOMING / PRE-ORDER TRANSITION
         // =========================
 
+        const upcomingAlertKey =
+          product.handle +
+          "|" +
+          (product.launchDate || "PREORDER");
+
         if (
-          previousUpcoming === false &&
           product.upcoming === true &&
-          !record.upcomingAlertSent &&
-          previousLastScanAt
+          previousLastScanAt &&
+          record.upcomingAlertKey !== upcomingAlertKey
         ) {
           record.upcomingAlertSent = true;
+          record.upcomingAlertKey = upcomingAlertKey;
 
           addAlert(
             alerts,
@@ -225,13 +237,11 @@ replaceRequired(
         // =========================`
 );
 
-// Upcoming products are opportunities, not hidden products.
 source = source.replace(
   /(!product\.explicitlySoldOut\s*&&\s*)!product\.launchDate/g,
   `$1!product.upcoming &&\n          !product.launchDate`
 );
 
-// 5) Prefer a currently available variant for cart links.
 replaceRequired(
   "variant selection",
   /function getVariantId\(product\) \{\n  return \(\n    product\?\.variants\?\.\[0\]\?\.id \|\|\n    null\n  \);\n\}/,
@@ -256,7 +266,6 @@ replaceRequired(
 }`
 );
 
-// 6) Direct Shopify cart quantity buttons.
 replaceRequired(
   "cart buttons",
   /function cartRow\(variantId\)\s*\{[\s\S]*?\}\s*async function sendToChannel/,
@@ -289,7 +298,6 @@ replaceRequired(
 async function sendToChannel`
 );
 
-// 7) Every notification gets at least a product button; in-stock events get cart buttons.
 replaceRequired(
   "product fallback button",
   /async function sendToChannel\([\s\S]*?\}\s*function addAlert/,
@@ -324,7 +332,6 @@ replaceRequired(
 function addAlert`
 );
 
-// 8) Prevent a stuck Mattel request from blocking the 5-minute scanner.
 replaceRequired(
   "catalog timeout",
   /await fetch\(url, \{\n        headers: \{\n          "User-Agent":\n            "Mozilla\/5\.0 MattelBotV2"\n        \}\n      \}\);/,
@@ -352,7 +359,6 @@ replaceRequired(
       );`
 );
 
-// 9) Keep the 5-minute scheduler alive even while the initial scan is running.
 replaceRequired(
   "scanner startup order",
   /startDailySummary\(\);\n\n    await scanForNewProducts\(\);\n\n    startScanner\(\);/,
@@ -363,7 +369,25 @@ replaceRequired(
     await scanForNewProducts();`
 );
 
-// 10) Remove the Discord.js v15 deprecation warning.
+replaceRequired(
+  "smart upcoming discovery integration",
+  /    saveProducts\(\n      savedProducts\n    \);/,
+  `    await require("./upcoming-discovery").runSmartUpcomingDiscovery({
+      catalog,
+      savedProducts,
+      channel,
+      stats,
+      alerts,
+      addAlert,
+      makeEmbed,
+      productUrl
+    });
+
+    saveProducts(
+      savedProducts
+    );`
+);
+
 source = source.replace(
   /client\.once\(\s*"ready"\s*,/g,
   'client.once("clientReady",'
@@ -372,6 +396,7 @@ source = source.replace(
 console.log("[PRODUCTION-FIX] Upcoming date validation applied");
 console.log("[PRODUCTION-FIX] Direct Shopify cart/product buttons applied");
 console.log("[PRODUCTION-FIX] Scanner timeout + scheduler fixes applied");
+console.log("[PRODUCTION-FIX] Smart Discovery Upcoming engine applied");
 console.log("[PRODUCTION-FIX] Starting bot.js");
 
 eval(source);

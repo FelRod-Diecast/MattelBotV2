@@ -1513,9 +1513,86 @@ function startDailySummary() {
         const products =
           loadProducts();
 
+        const upcoming = Object.values(products)
+          .filter(
+            p =>
+              p?.upcoming === true &&
+              p?.launchDate
+          )
+          .sort((a, b) => {
+            const at =
+              Number.isFinite(Number(a?.launchTimestamp))
+                ? Number(a.launchTimestamp)
+                : Date.parse(a?.launchDate || "") || Number.MAX_SAFE_INTEGER;
+
+            const bt =
+              Number.isFinite(Number(b?.launchTimestamp))
+                ? Number(b.launchTimestamp)
+                : Date.parse(b?.launchDate || "") || Number.MAX_SAFE_INTEGER;
+
+            return at - bt;
+          });
+
+        const formatUpcomingDate = product => {
+          const timestamp = Number(product?.launchTimestamp);
+
+          if (Number.isFinite(timestamp) && timestamp > 0) {
+            return new Intl.DateTimeFormat(
+              "en-US",
+              {
+                timeZone: "America/Los_Angeles",
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                timeZoneName: "short"
+              }
+            ).format(new Date(timestamp));
+          }
+
+          return product?.launchDate || "Date unavailable";
+        };
+
+        const upcomingLines = upcoming
+          .slice(0, 10)
+          .map((p, index) => {
+            const timestamp = Number(p?.launchTimestamp);
+            const days =
+              Number.isFinite(timestamp) && timestamp > Date.now()
+                ? Math.ceil(
+                    (timestamp - Date.now()) /
+                    86400000
+                  )
+                : 0;
+
+            const when =
+              Number.isFinite(timestamp) && timestamp > Date.now()
+                ? `in ${days} day${days === 1 ? "" : "s"}`
+                : "launch window";
+
+            return (
+              `**${index + 1}. ${p.title || "Untitled"}**\n` +
+              `📅 ${formatUpcomingDate(p)} • ${when}` +
+              `\n💲 ${p.price ?? "Unknown"}`
+            );
+          });
+
+        if (upcoming.length > 10) {
+          upcomingLines.push(
+            `…and ${upcoming.length - 10} more upcoming opportunities.`
+          );
+        }
+
         await channel.send(
-          "📊 **MattelBot Daily Summary**\n\n" +
+          "🌅 **Mattel Morning Opportunity Report**\n\n" +
           `📦 Tracking: ${Object.keys(products).length}\n` +
+          `🚀 Upcoming Opportunities: ${upcoming.length}\n` +
+          (upcomingLines.length
+            ? "\n" + upcomingLines.join("\n\n") + "\n"
+            : "\n✅ No upcoming launches currently tracked.\n") +
+          `\n🚨 Hidden Opportunities: ${Object.values(products).filter(p => p?.wasHidden === true).length}\n\n` +
+          "📈 **Yesterday's Activity**\n" +
           `🆕 New Products: ${stats.newProductsToday}\n` +
           `🔥 Restocks: ${stats.restocksToday}\n` +
           `❌ Sold Out: ${stats.soldOutToday}\n` +
