@@ -1,2 +1,4 @@
 node_modules
 .env
+stats.json
+alerts.json
