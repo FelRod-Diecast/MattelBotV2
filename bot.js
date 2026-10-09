@@ -1592,7 +1592,7 @@ function startDailySummary() {
           if (days < 0) return "launch window";
           if (days === 0) return "today";
           if (days === 1) return "tomorrow";
-          return \`in \${days} days\`;
+          return "in " + days + " days";
         };
 
         const upcomingLines = upcoming
@@ -1601,9 +1601,9 @@ function startDailySummary() {
             const when = getCalendarDayCountdown(p);
 
             return (
-              \`**\${index + 1}. \${p.title || "Untitled"}**\\n\` +
-              \`📅 \${formatUpcomingDate(p)} • \${when}\` +
-              \`\\n💲 \${p.price ?? "Unknown"}\`
+              "**" + (index + 1) + ". " + (p.title || "Untitled") + "**\n" +
+              "📅 " + formatUpcomingDate(p) + " • " + when +
+              "\n💲 " + (p.price ?? "Unknown")
             );
           });
 
