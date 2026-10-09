@@ -1571,7 +1571,7 @@ function startDailySummary() {
           };
         };
 
-        const getCalendarDayCountdown = (product) => {
+        const getCalendarDayCountdown = (product, now = new Date()) => {
           const dateText = String(product?.launchDate || "");
           const match = dateText.match(/([A-Za-z]+\s+\d{1,2},\s+\d{4})/);
           if (!match) return "launch window";
@@ -1584,7 +1584,7 @@ function startDailySummary() {
             month: parsed.getUTCMonth() + 1,
             day: parsed.getUTCDate()
           };
-          const today = pacificDateParts(new Date());
+          const today = pacificDateParts(now);
           const launchOrdinal = Date.UTC(launchDay.year, launchDay.month - 1, launchDay.day);
           const todayOrdinal = Date.UTC(today.year, today.month - 1, today.day);
           const days = Math.round((launchOrdinal - todayOrdinal) / 86400000);
