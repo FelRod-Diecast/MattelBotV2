@@ -974,9 +974,15 @@ async function scanForNewProducts() {
       if (!existing) {
 
         if (
-          wasActuallyNew &&
-          !newProductAlertedIds.has(
-            productId
+          !newProductAlertedIds.has(productId) &&
+          (
+            wasActuallyNew ||
+            (
+              previousLastScanAt &&
+              product.available &&
+              product.liveInventoryVerified === true &&
+              !product.upcoming
+            )
           )
         ) {
 
@@ -990,42 +996,16 @@ async function scanForNewProducts() {
           if (
             product.upcoming
           ) {
-
-            await sendToChannel(
-              channel,
-
-              makeEmbed(
-                "🚀 UPCOMING LAUNCH",
-                0xffa500,
-                product,
-                [
-                  {
-                    name: "📦 Product",
-                    value:
-                      product.title
-                  },
-                  {
-                    name: "🚀 Launch Date",
-                    value:
-                      product.launchDate ||
-                      "Mattel Launch Scheduled",
-                    inline: true
-                  },
-                  {
-                    name: "💲 Price",
-                    value:
-                      `$${product.price || "Unknown"}`,
-                    inline: true
-                  }
-                ]
-              )
+            // Upcoming notifications are owned exclusively by
+            // upcoming-discovery.js so the same launch cannot be
+            // announced by both scanner paths.
+            console.log(
+              `ℹ️ Upcoming notification delegated to Smart Discovery: ${product.title}`
             );
 
-            record.upcomingAlertSent =
-              true;
-
           } else if (
-            product.available
+            product.available &&
+            product.liveInventoryVerified === true
           ) {
 
             await sendToChannel(
