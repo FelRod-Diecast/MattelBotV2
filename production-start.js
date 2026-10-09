@@ -241,14 +241,8 @@ replaceRequired(
           product.available === false &&
           product.liveInventoryVerified === true`
 );
-replaceRequired(
-  "new product live verification guard",
-  /} else if \(\s*product\.available\s*\) \{/,
-  `} else if (
-            product.available &&
-            product.liveInventoryVerified === true
-          ) {`
-);
+// bot.js now checks liveInventoryVerified directly in its new-product branch.
+// Do not patch that branch again here; doing so would fail after the source change.
 
 // Upcoming launch notifications are owned by upcoming-discovery.js only.
 // Do not inject a second upcoming transition alert into bot.js.
