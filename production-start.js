@@ -174,7 +174,7 @@ replaceRequired(
 replaceRequired(
   "live inventory verification",
   /const available =\s*getAvailable\(raw\);/,
-  \`let available = getAvailable(raw);
+  `let available = getAvailable(raw);
       let liveInventoryVerified = false;
       let liveQuantity = null;
       let liveVariantId = null;
@@ -217,36 +217,36 @@ replaceRequired(
         } catch {
           available = previousAvailable === null ? false : previousAvailable;
         }
-      }\`
+      }`
 );
 replaceRequired(
   "live variant selection",
   /variantId:\s*getVariantId\(raw\),/,
-  \`variantId: liveVariantId || getVariantId(raw),
+  `variantId: liveVariantId || getVariantId(raw),
         liveInventoryVerified,
-        liveQuantity,\`
+        liveQuantity,`
 );
 replaceRequired(
   "restock live verification guard",
   /previousAvailable === false &&\s*product\.available === true/,
-  \`previousAvailable === false &&
+  `previousAvailable === false &&
           product.available === true &&
-          product.liveInventoryVerified === true\`
+          product.liveInventoryVerified === true`
 );
 replaceRequired(
   "sold-out live verification guard",
   /previousAvailable === true &&\s*product\.available === false/,
-  \`previousAvailable === true &&
+  `previousAvailable === true &&
           product.available === false &&
-          product.liveInventoryVerified === true\`
+          product.liveInventoryVerified === true`
 );
 replaceRequired(
   "new product live verification guard",
   /} else if \(\s*product\.available\s*\) \{/,
-  \`} else if (
+  `} else if (
             product.available &&
             product.liveInventoryVerified === true
-          ) {\`
+          ) {`
 );
 
 replaceRequired(
