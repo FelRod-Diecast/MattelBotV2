@@ -1124,10 +1124,72 @@ async function scanForNewProducts() {
             );
 
         } else {
+          // The initial catalog baseline stays silent by default. However,
+          // if Shopify verifies that a first-seen monitored product is
+          // purchasable, send one targeted availability alert instead of
+          // silently swallowing it or alerting on the entire catalog.
+          const firstSeenStockWatchMatch =
+            watchlist.find(keyword =>
+              product.title
+                .toLowerCase()
+                .includes(String(keyword).toLowerCase())
+            );
 
-          console.log(
-            `ℹ️ Baseline/previously missed product added without alert: ${product.title}`
-          );
+          const explicitlyMonitoredHandle =
+            new Set([
+              "hot-wheels-premium-car-culture-black-hole-gasser-2-pack-jhw56",
+              "hot-wheels-premium-car-culture-2-pack-quadra-turbo-r-v-tech-porsche-930-jhw53"
+            ]).has(String(product.handle || "").toLowerCase());
+
+          if (
+            product.available === true &&
+            product.liveInventoryVerified === true &&
+            (firstSeenStockWatchMatch || explicitlyMonitoredHandle) &&
+            record.stockAvailableAlertSent !== true
+          ) {
+            // Persist the dedupe flag and product state before sending.
+            // A restart after the Discord send must not turn this into a
+            // repeat alert on the next scan.
+            record.stockAvailableAlertSent = true;
+            savedProducts[productId] = record;
+            saveProducts(savedProducts);
+
+            addAlert(alerts, `🟢 ${product.title} — verified available`);
+
+            await sendToChannel(
+              channel,
+              makeEmbed(
+                "🟢 MONITORED PRODUCT AVAILABLE",
+                0x2ecc71,
+                product,
+                [
+                  {
+                    name: "📦 Product",
+                    value: product.title
+                  },
+                  {
+                    name: "✅ Live Status",
+                    value: "Shopify verified purchasable",
+                    inline: true
+                  },
+                  {
+                    name: "💲 Price",
+                    value: `${product.price || "Unknown"}`,
+                    inline: true
+                  }
+                ]
+              ),
+              cartRow(product.variantId)
+            );
+
+            console.log(
+              `[STOCK ALERT] First-seen monitored product is purchasable: ${product.handle}`
+            );
+          } else {
+            console.log(
+              `ℹ️ Baseline/previously missed product added without alert: ${product.title}`
+            );
+          }
         }
 
       } else {
