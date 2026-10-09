@@ -211,7 +211,7 @@ replaceRequired(
             liveQuantity = knownQuantities.length
               ? knownQuantities.reduce((sum, quantity) => sum + Math.max(0, Number(quantity)), 0)
               : null;
-            console.log(`[LIVE INVENTORY] ${raw.handle}: ${available ? "PURCHASABLE" : "NOT PURCHASABLE"} (qty: ${liveQuantity ?? "unknown"})`);
+            console.log("[LIVE INVENTORY] " + raw.handle + ": " + (available ? "PURCHASABLE" : "NOT PURCHASABLE") + " (qty: " + (liveQuantity ?? "unknown") + ")");
           } else {
             available = previousAvailable === null ? false : previousAvailable;
           }
