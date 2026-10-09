@@ -140,16 +140,8 @@ replaceRequired(
     }`
 );
 
-replaceRequired(
-  "new product upcoming alert key",
-  /record\.upcomingAlertSent\s*=\s*true;/,
-  `record.upcomingAlertSent = true;
-
-            record.upcomingAlertKey =
-              product.handle +
-              "|" +
-              (product.launchDate || "PREORDER");`
-);
+// upcoming-discovery.js owns both the upcoming notification and its persisted alert key.
+// Do not patch bot.js for this; that path no longer sends upcoming alerts.
 
 replaceRequired(
   "previous upcoming state",
