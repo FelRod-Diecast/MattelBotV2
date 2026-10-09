@@ -119,14 +119,6 @@ replaceRequired(
 // MATTEL PRODUCT CATALOG`
 );
 
-replaceRequired(
-  "product page fetch",
-  /await fetchProductPageInfo\(\s*raw\.handle,\s*shouldCheckLaunch\s*\)/,
-  `await fetchProductPageInfo(
-            raw.handle,
-            true
-          )`
-);
 
 replaceRequired(
   "upcoming sold-out guard",
