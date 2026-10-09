@@ -1129,6 +1129,8 @@ async function scanForNewProducts() {
             `ℹ️ Baseline/previously missed product added without alert: ${product.title}`
           );
 
+        }
+
       } else {
 
         // =========================
