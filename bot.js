@@ -1554,41 +1554,43 @@ function startDailySummary() {
           return product?.launchDate || "Date unavailable";
         };
 
-        // Count calendar days in Pacific time so the countdown agrees with
-        // the launch date displayed to users; elapsed 24-hour rounding can drift.
-        const pacificDateParts = (date) => {
-          const parts = new Intl.DateTimeFormat("en-US", {
-            timeZone: "America/Los_Angeles",
-            year: "numeric",
-            month: "numeric",
-            day: "numeric"
-          }).formatToParts(date);
-          const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
-          return {
-            year: Number(values.year),
-            month: Number(values.month),
-            day: Number(values.day)
-          };
-        };
+        // Calculate countdown from the live clock and Pacific time zone.
+        const getLaunchCountdown = (product, now = Date.now()) => {
+          const timestamp = Number(product?.launchTimestamp);
+          if (Number.isFinite(timestamp) && timestamp > 0) {
+            const remainingMs = timestamp - now;
+            if (remainingMs <= 0) return "launch time passed";
+            const totalMinutes = Math.ceil(remainingMs / 60000);
+            if (totalMinutes < 60) return "in " + totalMinutes + " minute" + (totalMinutes === 1 ? "" : "s");
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            if (remainingMs < 86400000) {
+              return minutes ? "in " + hours + "h " + minutes + "m" : "in " + hours + " hour" + (hours === 1 ? "" : "s");
+            }
+            const pacificParts = date => {
+              const parts = new Intl.DateTimeFormat("en-US", {timeZone:"America/Los_Angeles",year:"numeric",month:"numeric",day:"numeric"}).formatToParts(date);
+              return Object.fromEntries(parts.map(part => [part.type, part.value]));
+            };
+            const launch = pacificParts(new Date(timestamp));
+            const today = pacificParts(new Date(now));
+            const launchDay = Date.UTC(Number(launch.year), Number(launch.month)-1, Number(launch.day));
+            const todayDay = Date.UTC(Number(today.year), Number(today.month)-1, Number(today.day));
+            const days = Math.round((launchDay-todayDay)/86400000);
+            if (days === 0) return "later today";
+            if (days === 1) return "tomorrow";
+            if (days > 1) return "in " + days + " days";
+          }
 
-        const getCalendarDayCountdown = (product, now = new Date()) => {
           const dateText = String(product?.launchDate || "");
           const match = dateText.match(/([A-Za-z]+\s+\d{1,2},\s+\d{4})/);
           if (!match) return "launch window";
-
           const parsed = new Date(match[1]);
           if (Number.isNaN(parsed.getTime())) return "launch window";
-
-          const launchDay = {
-            year: parsed.getUTCFullYear(),
-            month: parsed.getUTCMonth() + 1,
-            day: parsed.getUTCDate()
-          };
-          const today = pacificDateParts(now);
-          const launchOrdinal = Date.UTC(launchDay.year, launchDay.month - 1, launchDay.day);
-          const todayOrdinal = Date.UTC(today.year, today.month - 1, today.day);
-          const days = Math.round((launchOrdinal - todayOrdinal) / 86400000);
-
+          const parts = new Intl.DateTimeFormat("en-US", {timeZone:"America/Los_Angeles",year:"numeric",month:"numeric",day:"numeric"}).formatToParts(new Date(now));
+          const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+          const launchDay = Date.UTC(parsed.getUTCFullYear(),parsed.getUTCMonth(),parsed.getUTCDate());
+          const todayDay = Date.UTC(Number(values.year),Number(values.month)-1,Number(values.day));
+          const days = Math.round((launchDay-todayDay)/86400000);
           if (days < 0) return "launch window";
           if (days === 0) return "today";
           if (days === 1) return "tomorrow";
@@ -1598,8 +1600,7 @@ function startDailySummary() {
         const upcomingLines = upcoming
           .slice(0, 10)
           .map((p, index) => {
-            const when = getCalendarDayCountdown(p);
-
+            const when = getLaunchCountdown(p);
             return (
               "**" + (index + 1) + ". " + (p.title || "Untitled") + "**\n" +
               "📅 " + formatUpcomingDate(p) + " • " + when +
