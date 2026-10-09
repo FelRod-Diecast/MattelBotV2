@@ -170,6 +170,85 @@ replaceRequired(
       const available =`
 );
 
+
+replaceRequired(
+  "live inventory verification",
+  /const available =\s*getAvailable\(raw\);/,
+  \`let available = getAvailable(raw);
+      let liveInventoryVerified = false;
+      let liveQuantity = null;
+      let liveVariantId = null;
+
+      // Verify Shopify stock before emitting stock transitions. On request
+      // failure, preserve the last known state rather than invent a transition.
+      if (raw.handle && (available || previousAvailable === true)) {
+        try {
+          const liveResponse = await fetch(
+            "https://creations.mattel.com/products/" + raw.handle + ".js",
+            {
+              headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 MattelBotV2" },
+              signal: AbortSignal.timeout(8000)
+            }
+          );
+
+          if (liveResponse.ok) {
+            const liveProduct = await liveResponse.json();
+            const variants = Array.isArray(liveProduct?.variants) ? liveProduct.variants : [];
+            const purchasableVariants = variants.filter(variant => {
+              if (variant?.available !== true) return false;
+              const quantity = variant?.inventory_quantity;
+              return quantity === null || quantity === undefined ||
+                !Number.isFinite(Number(quantity)) || Number(quantity) > 0;
+            });
+
+            liveInventoryVerified = true;
+            available = purchasableVariants.length > 0;
+            liveVariantId = purchasableVariants.find(variant => variant?.id)?.id || null;
+
+            const knownQuantities = variants
+              .map(variant => variant?.inventory_quantity)
+              .filter(quantity => quantity !== null && quantity !== undefined && Number.isFinite(Number(quantity)));
+            liveQuantity = knownQuantities.length
+              ? knownQuantities.reduce((sum, quantity) => sum + Math.max(0, Number(quantity)), 0)
+              : null;
+          } else {
+            available = previousAvailable === null ? false : previousAvailable;
+          }
+        } catch {
+          available = previousAvailable === null ? false : previousAvailable;
+        }
+      }\`
+);
+replaceRequired(
+  "live variant selection",
+  /variantId:\s*getVariantId\(raw\),/,
+  \`variantId: liveVariantId || getVariantId(raw),
+        liveInventoryVerified,
+        liveQuantity,\`
+);
+replaceRequired(
+  "restock live verification guard",
+  /previousAvailable === false &&\s*product\.available === true/,
+  \`previousAvailable === false &&
+          product.available === true &&
+          product.liveInventoryVerified === true\`
+);
+replaceRequired(
+  "sold-out live verification guard",
+  /previousAvailable === true &&\s*product\.available === false/,
+  \`previousAvailable === true &&
+          product.available === false &&
+          product.liveInventoryVerified === true\`
+);
+replaceRequired(
+  "new product live verification guard",
+  /} else if \(\s*product\.available\s*\) \{/,
+  \`} else if (
+            product.available &&
+            product.liveInventoryVerified === true
+          ) {\`
+);
+
 replaceRequired(
   "upcoming transition alert",
   /        \/\/ =========================\n        \/\/ RESTOCK\n        \/\/ =========================/,
