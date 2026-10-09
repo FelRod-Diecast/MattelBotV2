@@ -181,7 +181,7 @@ replaceRequired(
 
       // Verify Shopify stock before emitting stock transitions. On request
       // failure, preserve the last known state rather than invent a transition.
-      if (raw.handle && (available || previousAvailable === true)) {
+      if (raw.handle && (available || previousAvailable !== null)) {
         try {
           const liveResponse = await fetch(
             "https://creations.mattel.com/products/" + raw.handle + ".js",
@@ -211,6 +211,7 @@ replaceRequired(
             liveQuantity = knownQuantities.length
               ? knownQuantities.reduce((sum, quantity) => sum + Math.max(0, Number(quantity)), 0)
               : null;
+            console.log(`[LIVE INVENTORY] ${raw.handle}: ${available ? "PURCHASABLE" : "NOT PURCHASABLE"} (qty: ${liveQuantity ?? "unknown"})`);
           } else {
             available = previousAvailable === null ? false : previousAvailable;
           }
