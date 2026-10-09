@@ -250,64 +250,8 @@ replaceRequired(
           ) {`
 );
 
-replaceRequired(
-  "upcoming transition alert",
-  /        \/\/ =========================\n        \/\/ RESTOCK\n        \/\/ =========================/,
-  `        // =========================
-        // UPCOMING / PRE-ORDER TRANSITION
-        // =========================
-
-        const upcomingAlertKey =
-          product.handle +
-          "|" +
-          (product.launchDate || "PREORDER");
-
-        if (
-          product.upcoming === true &&
-          previousLastScanAt &&
-          record.upcomingAlertKey !== upcomingAlertKey
-        ) {
-          record.upcomingAlertSent = true;
-          record.upcomingAlertKey = upcomingAlertKey;
-
-          addAlert(
-            alerts,
-            \`🚀 \${product.title}\`
-          );
-
-          await sendToChannel(
-            channel,
-            makeEmbed(
-              "🚀 UPCOMING / PRE-ORDER",
-              0xffa500,
-              product,
-              [
-                {
-                  name: "📦 Product",
-                  value: product.title
-                },
-                {
-                  name: "🚀 Release / Ship Date",
-                  value: product.launchDate || "Pre-order / Coming Soon",
-                  inline: true
-                },
-                {
-                  name: "💲 Price",
-                  value: \`$\${product.price || "Unknown"}\`,
-                  inline: true
-                }
-              ]
-            )
-          );
-        }
-
-        // =========================
-        // RESTOCK
-        // =========================
-        // =========================
-        // RESTOCK
-        // =========================`
-);
+// Upcoming launch notifications are owned by upcoming-discovery.js only.
+// Do not inject a second upcoming transition alert into bot.js.
 
 source = source.replace(
   /(!product\.explicitlySoldOut\s*&&\s*)!product\.launchDate/g,
