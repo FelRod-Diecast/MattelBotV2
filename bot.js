@@ -1554,27 +1554,56 @@ function startDailySummary() {
           return product?.launchDate || "Date unavailable";
         };
 
+        // Count calendar days in Pacific time so the countdown agrees with
+        // the launch date displayed to users; elapsed 24-hour rounding can drift.
+        const pacificDateParts = (date) => {
+          const parts = new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/Los_Angeles",
+            year: "numeric",
+            month: "numeric",
+            day: "numeric"
+          }).formatToParts(date);
+          const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+          return {
+            year: Number(values.year),
+            month: Number(values.month),
+            day: Number(values.day)
+          };
+        };
+
+        const getCalendarDayCountdown = (product) => {
+          const dateText = String(product?.launchDate || "");
+          const match = dateText.match(/([A-Za-z]+\s+\d{1,2},\s+\d{4})/);
+          if (!match) return "launch window";
+
+          const parsed = new Date(match[1]);
+          if (Number.isNaN(parsed.getTime())) return "launch window";
+
+          const launchDay = {
+            year: parsed.getUTCFullYear(),
+            month: parsed.getUTCMonth() + 1,
+            day: parsed.getUTCDate()
+          };
+          const today = pacificDateParts(new Date());
+          const launchOrdinal = Date.UTC(launchDay.year, launchDay.month - 1, launchDay.day);
+          const todayOrdinal = Date.UTC(today.year, today.month - 1, today.day);
+          const days = Math.round((launchOrdinal - todayOrdinal) / 86400000);
+
+          if (days < 0) return "launch window";
+          if (days === 0) return "today";
+          if (days === 1) return "tomorrow";
+          return \`in \${days} days\`;
+        };
+
         const upcomingLines = upcoming
           .slice(0, 10)
           .map((p, index) => {
-            const timestamp = Number(p?.launchTimestamp);
-            const days =
-              Number.isFinite(timestamp) && timestamp > Date.now()
-                ? Math.ceil(
-                    (timestamp - Date.now()) /
-                    86400000
-                  )
-                : 0;
-
-            const when =
-              Number.isFinite(timestamp) && timestamp > Date.now()
-                ? `in ${days} day${days === 1 ? "" : "s"}`
-                : "launch window";
+            const when = getCalendarDayCountdown(p);
 
             return (
-              `**${index + 1}. ${p.title || "Untitled"}**\n` +
-              `📅 ${formatUpcomingDate(p)} • ${when}` +
-              `\n💲 ${p.price ?? "Unknown"}`
+              \`**\${index + 1}. \${p.title || "Untitled"}**\\n\` +
+              \`📅 \${formatUpcomingDate(p)} • \${when}\` +
+              \`\\n💲 \${p.price ?? "Unknown"}\`
             );
           });
 
