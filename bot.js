@@ -980,8 +980,7 @@ async function scanForNewProducts() {
             (
               previousLastScanAt &&
               product.available &&
-              product.liveInventoryVerified === true &&
-              !product.upcoming
+              product.liveInventoryVerified === true
             )
           )
         ) {
@@ -994,16 +993,6 @@ async function scanForNewProducts() {
           );
 
           if (
-            product.upcoming
-          ) {
-            // Upcoming notifications are owned exclusively by
-            // upcoming-discovery.js so the same launch cannot be
-            // announced by both scanner paths.
-            console.log(
-              `ℹ️ Upcoming notification delegated to Smart Discovery: ${product.title}`
-            );
-
-          } else if (
             product.available &&
             product.liveInventoryVerified === true
           ) {
@@ -1039,6 +1028,16 @@ async function scanForNewProducts() {
               cartRow(
                 product.variantId
               )
+            );
+
+          } else if (
+            product.upcoming
+          ) {
+            // Upcoming notifications are owned exclusively by
+            // upcoming-discovery.js. Only delegate when live inventory
+            // did not verify the product as purchasable.
+            console.log(
+              `ℹ️ Upcoming notification delegated to Smart Discovery: ${product.title}`
             );
 
           } else if (
