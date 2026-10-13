@@ -1374,50 +1374,9 @@ async function scanForNewProducts() {
             )
         );
 
-      // The RESTOCK block above already alerts for every verified
-      // false -> true transition. Do not send a second watchlist alert
-      // for the same transition.
-      if (
-        watchMatch &&
-        product.available &&
-        !wasActuallyNew &&
-        previousAvailable === false &&
-        false
-      ) {
-
-        await sendToChannel(
-          channel,
-
-          makeEmbed(
-            "🚨 WATCHLIST MATCH",
-            0xff0000,
-            product,
-            [
-              {
-                name: "📦 Product",
-                value:
-                  product.title
-              },
-              {
-                name: "🎯 Watchlist Keyword",
-                value:
-                  watchMatch,
-                inline: true
-              },
-              {
-                name: "💲 Price",
-                value:
-                  `$${product.price || "Unknown"}`,
-                inline: true
-              }
-            ]
-          ),
-
-          cartRow(
-            product.variantId
-          )
-        );
-      }
+      // A restock is already announced by the RESTOCK block above.
+      // Keep the keyword lookup for future single-alert formatting, but do not
+      // send a second notification for the same availability transition.
 
       savedProducts[
         productId
