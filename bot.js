@@ -973,6 +973,13 @@ async function scanForNewProducts() {
           now
         );
 
+      const watchMatch =
+        watchlist.find(keyword =>
+          product.title
+            .toLowerCase()
+            .includes(String(keyword).toLowerCase())
+        );
+
       // =========================
       // NEW PRODUCT
       // =========================
@@ -1209,7 +1216,12 @@ async function scanForNewProducts() {
                       record.stats.restockEvents
                     ),
                   inline: true
-                }
+                },
+                ...(watchMatch ? [{
+                  name: "⭐ Watchlist Match",
+                  value: String(watchMatch),
+                  inline: true
+                }] : [])
               ]
             ),
 
@@ -1367,19 +1379,7 @@ async function scanForNewProducts() {
       // WATCHLIST
       // =========================
 
-      const watchMatch =
-        watchlist.find(keyword =>
-          product.title
-            .toLowerCase()
-            .includes(
-              String(keyword)
-                .toLowerCase()
-            )
-        );
-
-      // A restock is already announced by the RESTOCK block above.
-      // Keep the keyword lookup for future single-alert formatting, but do not
-      // send a second notification for the same availability transition.
+      // Watchlist matches are included in the primary restock embed; no duplicate alert.
 
       savedProducts[
         productId
