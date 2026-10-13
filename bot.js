@@ -526,6 +526,44 @@ function addAlert(
 // PRODUCT RECORD
 // =========================
 
+function isFutureLaunchDate(value) {
+  if (!value) return false;
+  const raw = String(value).trim();
+  const direct = Date.parse(raw);
+  if (Number.isFinite(direct)) return direct > Date.now();
+
+  const match = raw.match(
+    /^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})\s+(\d{1,2}):(\d{2})\s*(am|pm)\s*PT$/i
+  );
+  if (!match) return false;
+
+  const months = {
+    january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+    july: 6, august: 7, september: 8, october: 9, november: 10, december: 11
+  };
+  const month = months[match[1].toLowerCase()];
+  if (month === undefined) return false;
+
+  let hour = Number(match[4]);
+  if (match[6].toLowerCase() === "pm" && hour !== 12) hour += 12;
+  if (match[6].toLowerCase() === "am" && hour === 12) hour = 0;
+
+  const probe = new Date(Date.UTC(Number(match[3]), month, Number(match[2]), 20));
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    timeZoneName: "shortOffset"
+  }).formatToParts(probe);
+  const offset = (parts.find(part => part.type === "timeZoneName")?.value || "GMT-8")
+    .match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/i);
+  const offsetMinutes = offset
+    ? (Number(offset[2]) * 60 + Number(offset[3] || 0)) * (offset[1] === "+" ? 1 : -1)
+    : -480;
+  const timestamp = Date.UTC(
+    Number(match[3]), month, Number(match[2]), hour, Number(match[5])
+  ) - offsetMinutes * 60000;
+  return timestamp > Date.now();
+}
+
 function ensureRecord(
   existing,
   product,
@@ -581,16 +619,20 @@ function ensureRecord(
     existing.image =
       getImage(product);
 
-    // Preserve a known future opportunity across ordinary catalog scans.
-    // Clear it only when Shopify confirms that it is actually purchasable.
-    existing.upcoming =
-      !(product.liveInventoryVerified === true && product.available === true) &&
-      (product.upcoming === true || existing.upcoming === true);
-
+    // Recover upcoming state from a saved launch date if a previous scan
+    // accidentally cleared the flag. Only verified live inventory clears it.
     existing.launchDate =
       product.launchDate ||
       existing.launchDate ||
       null;
+
+    existing.upcoming =
+      !(product.liveInventoryVerified === true && product.available === true) &&
+      (
+        product.upcoming === true ||
+        existing.upcoming === true ||
+        isFutureLaunchDate(existing.launchDate)
+      );
 
     existing.productPageFetched =
       product.productPageFetched ||
