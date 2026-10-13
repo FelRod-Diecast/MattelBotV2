@@ -581,12 +581,18 @@ function ensureRecord(
     existing.image =
       getImage(product);
 
+    // Preserve a known future opportunity across ordinary catalog scans.
+    // Clear it only when Shopify confirms that it is actually purchasable.
     existing.upcoming =
-      product.upcoming ||
-      false;
+      product.upcoming === true ||
+      (
+        existing.upcoming === true &&
+        !(product.liveInventoryVerified === true && product.available === true)
+      );
 
     existing.launchDate =
       product.launchDate ||
+      existing.launchDate ||
       null;
 
     existing.productPageFetched =
