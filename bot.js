@@ -584,11 +584,8 @@ function ensureRecord(
     // Preserve a known future opportunity across ordinary catalog scans.
     // Clear it only when Shopify confirms that it is actually purchasable.
     existing.upcoming =
-      product.upcoming === true ||
-      (
-        existing.upcoming === true &&
-        !(product.liveInventoryVerified === true && product.available === true)
-      );
+      !(product.liveInventoryVerified === true && product.available === true) &&
+      (product.upcoming === true || existing.upcoming === true);
 
     existing.launchDate =
       product.launchDate ||
