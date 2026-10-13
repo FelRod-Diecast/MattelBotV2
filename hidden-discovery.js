@@ -68,7 +68,7 @@ function hasLaunchOrHiddenSignal(html) {
     || /add-to-cart|add to cart|product-form/i.test(html);
 }
 
-async function runHiddenDiscovery({ catalog, savedProducts, channel, stats, alerts, addAlert, makeEmbed, productUrl }) {
+async function runHiddenDiscovery({ catalog, savedProducts, channel, stats, saveStats, alerts, addAlert, makeEmbed, productUrl }) {
   const startedAt = Date.now();
   const catalogHandles = new Set((catalog || []).map(p => lower(p?.handle)).filter(Boolean));
   const savedHandles = new Set(Object.values(savedProducts || {}).map(p => lower(p?.handle)).filter(Boolean));
@@ -134,6 +134,7 @@ async function runHiddenDiscovery({ catalog, savedProducts, channel, stats, aler
       // resend the same discovery on the next scan.
       stats.hiddenAlertedHandles.push(handle);
       stats.hiddenAlertedHandles = stats.hiddenAlertedHandles.slice(-1000);
+      if (typeof saveStats === "function") saveStats(stats);
       addAlert(alerts, "👻 " + product.title);
       await channel.send({ embeds: [embed] });
       discovered++;
