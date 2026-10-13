@@ -134,6 +134,11 @@ async function runHiddenDiscovery({ catalog, savedProducts, channel, stats, save
       // resend the same discovery on the next scan.
       stats.hiddenAlertedHandles.push(handle);
       stats.hiddenAlertedHandles = stats.hiddenAlertedHandles.slice(-1000);
+      const trackedRecord = savedByHandle.get(handle);
+      if (trackedRecord) {
+        trackedRecord.wasHidden = true;
+        trackedRecord.hiddenAlertSent = true;
+      }
       if (typeof saveStats === "function") saveStats(stats);
       addAlert(alerts, "👻 " + product.title);
       await channel.send({ embeds: [embed] });
