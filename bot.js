@@ -622,8 +622,11 @@ function ensureRecord(
       null;
 
     existing.upcoming =
-      product.upcoming === true ||
-      isFutureLaunchDate(existing.launchDate);
+      !(product.liveInventoryVerified === true && product.available === true) &&
+      (
+        product.upcoming === true ||
+        isFutureLaunchDate(existing.launchDate)
+      );
 
     existing.productPageFetched =
       product.productPageFetched ||
