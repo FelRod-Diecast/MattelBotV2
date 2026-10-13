@@ -1009,6 +1009,13 @@ async function scanForNewProducts() {
           now
         );
 
+      const watchMatch =
+        watchlist.find(keyword =>
+          product.title
+            .toLowerCase()
+            .includes(String(keyword).toLowerCase())
+        );
+
       // =========================
       // NEW PRODUCT
       // =========================
@@ -1245,7 +1252,12 @@ async function scanForNewProducts() {
                       record.stats.restockEvents
                     ),
                   inline: true
-                }
+                },
+                ...(watchMatch ? [{
+                  name: "⭐ Watchlist Match",
+                  value: String(watchMatch),
+                  inline: true
+                }] : [])
               ]
             ),
 
@@ -1399,63 +1411,7 @@ async function scanForNewProducts() {
         }
       }
 
-      // =========================
-      // WATCHLIST
-      // =========================
-
-      const watchMatch =
-        watchlist.find(keyword =>
-          product.title
-            .toLowerCase()
-            .includes(
-              String(keyword)
-                .toLowerCase()
-            )
-        );
-
-      // Only alert watchlist on a REAL restock.
-      // A brand-new product already has its own NEW alert,
-      // so it cannot generate a second notification here.
-      if (
-        watchMatch &&
-        product.available &&
-        !wasActuallyNew &&
-        previousAvailable === false
-      ) {
-
-        await sendToChannel(
-          channel,
-
-          makeEmbed(
-            "🚨 WATCHLIST MATCH",
-            0xff0000,
-            product,
-            [
-              {
-                name: "📦 Product",
-                value:
-                  product.title
-              },
-              {
-                name: "🎯 Watchlist Keyword",
-                value:
-                  watchMatch,
-                inline: true
-              },
-              {
-                name: "💲 Price",
-                value:
-                  `$${product.price || "Unknown"}`,
-                inline: true
-              }
-            ]
-          ),
-
-          cartRow(
-            product.variantId
-          )
-        );
-      }
+      // Watchlist matches are included in the primary restock embed to avoid duplicate alerts.
 
       savedProducts[
         productId
