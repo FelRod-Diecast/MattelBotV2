@@ -22,7 +22,7 @@ const VEHICLE = [
   "porsche", "ferrari", "nissan", "datsun", "chevrolet", "chevy", "dodge",
   "ford", "toyota", "mazda", "blazer", "silverado", "240z", "240-z"
 ];
-const text = value => String(value || "").replace(/\\s+/g, " ").trim();
+const text = value => String(value || "").replace(/\s+/g, " ").trim();
 const lower = value => text(value).toLowerCase();
 
 async function getText(url) {
@@ -57,14 +57,14 @@ function isVehicle(handle, title = "") {
 }
 
 function parseTitle(html, handle) {
-  const match = html.match(/property=["']og:title["']\\s+content=["']([^"']+)/i)
+  const match = html.match(/property=["']og:title["']\s+content=["']([^"']+)/i)
     || html.match(/<title[^>]*>([^<]+)/i);
-  return text(match?.[1] || handle).replace(/\\s*\\|\\s*Mattel.*$/i, "");
+  return text(match?.[1] || handle).replace(/\s*\|\s*Mattel.*$/i, "");
 }
 
 function hasLaunchOrHiddenSignal(html) {
-  return /\\bLaunches\\s+[A-Za-z]+\\s+\\d{1,2},\\s+\\d{4}/i.test(html)
-    || /\\b(?:ships|expected to ship|shipping by)\\s+[A-Za-z0-9\\s,]+/i.test(html)
+  return /\bLaunches\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}/i.test(html)
+    || /\b(?:ships|expected to ship|shipping by)\s+[A-Za-z0-9\s,]+/i.test(html)
     || /add-to-cart|add to cart|product-form/i.test(html);
 }
 
@@ -77,7 +77,7 @@ async function runHiddenDiscovery({ catalog, savedProducts, channel, stats, save
   const pages = await Promise.all(SOURCES.map(path => getText(BASE + path)));
   for (const html of pages) {
     if (!html) continue;
-    const pattern = /\\/products\\/([a-z0-9][a-z0-9-]{1,150})(?:[?#"'\\\\/]|$)/gi;
+    const pattern = /\/products\/([a-z0-9][a-z0-9-]{1,150})(?:[?#"'\\/]|$)/gi;
     let match;
     while ((match = pattern.exec(html))) {
       const handle = lower(match[1]);
@@ -115,8 +115,8 @@ async function runHiddenDiscovery({ catalog, savedProducts, channel, stats, save
       stats.hiddenAlertedHandles = Array.isArray(stats.hiddenAlertedHandles) ? stats.hiddenAlertedHandles : [];
       if (stats.hiddenAlertedHandles.includes(handle)) continue;
 
-      const titleMatch = product.html.match(/property=["']og:title["']\\s+content=["']([^"']+)/i);
-      const priceMatch = product.html.match(/["']price["']\\s*:\\s*["']?([0-9]+(?:\\.[0-9]{1,2})?)/i);
+      const titleMatch = product.html.match(/property=["']og:title["']\s+content=["']([^"']+)/i);
+      const priceMatch = product.html.match(/["']price["']\s*:\s*["']?([0-9]+(?:\.[0-9]{1,2})?)/i);
       const price = priceMatch ? "$" + priceMatch[1] : "Unknown";
       const url = productUrl(handle);
       const embed = makeEmbed("👻 POSSIBLE HIDDEN PRODUCT DETECTED", 0xffcc00, {
