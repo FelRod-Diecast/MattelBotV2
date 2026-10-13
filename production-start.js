@@ -23,7 +23,7 @@ function replaceRequired(label, pattern, replacement) {
 replaceRequired(
   "launch parser",
   /function parseLaunchDate\(text\) \{[\s\S]*?\n\}\n\n\/\/ =========================\n\/\/ MATTEL PRODUCT CATALOG/,
-  `function parseUpcomingInfo(text) {
+  String.raw`function parseUpcomingInfo(text) {
   if (!text) {
     return {
       upcoming: false,
