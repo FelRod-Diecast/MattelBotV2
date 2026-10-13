@@ -1374,14 +1374,15 @@ async function scanForNewProducts() {
             )
         );
 
-      // Only alert watchlist on a REAL restock.
-      // A brand-new product already has its own NEW alert,
-      // so it cannot generate a second notification here.
+      // The RESTOCK block above already alerts for every verified
+      // false -> true transition. Do not send a second watchlist alert
+      // for the same transition.
       if (
         watchMatch &&
         product.available &&
         !wasActuallyNew &&
-        previousAvailable === false
+        previousAvailable === false &&
+        false
       ) {
 
         await sendToChannel(
