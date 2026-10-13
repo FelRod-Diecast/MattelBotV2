@@ -70,7 +70,6 @@ function hasLaunchOrHiddenSignal(html) {
 
 async function runHiddenDiscovery({ catalog, savedProducts, channel, stats, saveStats, alerts, addAlert, makeEmbed, productUrl }) {
   const startedAt = Date.now();
-  const catalogHandles = new Set((catalog || []).map(p => lower(p?.handle)).filter(Boolean));
   const savedHandles = new Set(Object.values(savedProducts || {}).map(p => lower(p?.handle)).filter(Boolean));
   const candidates = new Set();
 
@@ -81,7 +80,7 @@ async function runHiddenDiscovery({ catalog, savedProducts, channel, stats, save
     let match;
     while ((match = pattern.exec(html))) {
       const handle = lower(match[1]);
-      if (!catalogHandles.has(handle) && !savedHandles.has(handle) && isVehicle(handle)) {
+      if (!savedHandles.has(handle) && isVehicle(handle)) {
         candidates.add(handle);
       }
     }
