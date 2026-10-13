@@ -1935,8 +1935,11 @@ client.on(
           )
           .filter(
             p =>
-              p.upcoming === true &&
-              p.launchDate
+              p.launchDate &&
+              (
+                p.upcoming === true ||
+                isFutureLaunchDate(p.launchDate)
+              )
           )
           .sort(
             (a, b) =>
