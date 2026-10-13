@@ -122,10 +122,11 @@ replaceRequired(
 
 replaceRequired(
   "upcoming sold-out guard",
-  /result\.explicitlySoldOut =\n      lower\.includes\("sold out"\) \|\|\n      lower\.includes\("out of stock"\) \|\|\n      lower\.includes\("unavailable"\);\n\n    if \(checkLaunch\) \{\n      result\.launchDate =\n        parseLaunchDate\(html\);\n\n      result\.upcoming =\n        Boolean\(\n          result\.launchDate\n        \);\n    \}/,
+  /result\.explicitlySoldOut = [\s\S]*?if \(checkLaunch\) \{[\s\S]*?\n    \}/,
   `result.explicitlySoldOut =
-      lower.includes("sold out") ||
-      lower.includes("out of stock");
+      /\\bsold[ -]?out\\b/i.test(lower) ||
+      /\\bout of stock\\b/i.test(lower) ||
+      /\\bcurrently unavailable\\b/i.test(lower);
 
     if (checkLaunch) {
       const upcomingInfo =
