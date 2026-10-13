@@ -122,7 +122,7 @@ replaceRequired(
 
 replaceRequired(
   "upcoming sold-out guard",
-  /result\.explicitlySoldOut = [\s\S]*?if \(checkLaunch\) \{[\s\S]*?\n    \}/,
+  /result\.explicitlySoldOut =\\s*[\\s\\S]*?if \\(checkLaunch\\) \\{[\\s\\S]*?\\n    \\}/,
   `result.explicitlySoldOut =
       /\\bsold[ -]?out\\b/i.test(lower) ||
       /\\bout of stock\\b/i.test(lower) ||
