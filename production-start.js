@@ -374,7 +374,19 @@ replaceRequired(
 replaceRequired(
   "smart upcoming discovery integration",
   /    saveProducts\(\n      savedProducts\n    \);/,
-  `    await require("./upcoming-discovery").runSmartUpcomingDiscovery({
+  `    await require("./hidden-discovery").runHiddenDiscovery({
+      catalog,
+      savedProducts,
+      channel,
+      stats,
+      saveStats,
+      alerts,
+      addAlert,
+      makeEmbed,
+      productUrl
+    });
+
+    await require("./upcoming-discovery").runSmartUpcomingDiscovery({
       catalog,
       savedProducts,
       channel,
@@ -398,6 +410,7 @@ source = source.replace(
 console.log("[PRODUCTION-FIX] Upcoming date validation applied");
 console.log("[PRODUCTION-FIX] Direct Shopify cart/product buttons applied");
 console.log("[PRODUCTION-FIX] Scanner timeout + scheduler fixes applied");
+console.log("[PRODUCTION-FIX] Hidden source discovery engine applied");
 console.log("[PRODUCTION-FIX] Smart Discovery Upcoming engine applied");
 console.log("[PRODUCTION-FIX] Starting bot.js");
 
