@@ -194,17 +194,24 @@ replaceRequired(
                 !Number.isFinite(Number(quantity)) || Number(quantity) > 0;
             });
 
-            liveInventoryVerified = true;
-            available = purchasableVariants.length > 0;
-            liveVariantId = purchasableVariants.find(variant => variant?.id)?.id || null;
+            if (variants.length > 0) {
+              // A successful HTTP response with no variants is not a valid stock
+              // observation. Do not convert malformed/blocked payloads into OOS.
+              liveInventoryVerified = true;
+              available = purchasableVariants.length > 0;
+              liveVariantId = purchasableVariants.find(variant => variant?.id)?.id || null;
 
-            const knownQuantities = variants
-              .map(variant => variant?.inventory_quantity)
-              .filter(quantity => quantity !== null && quantity !== undefined && Number.isFinite(Number(quantity)));
-            liveQuantity = knownQuantities.length
-              ? knownQuantities.reduce((sum, quantity) => sum + Math.max(0, Number(quantity)), 0)
-              : null;
-            console.log("[LIVE INVENTORY] " + raw.handle + ": " + (available ? "PURCHASABLE" : "NOT PURCHASABLE") + " (qty: " + (liveQuantity ?? "unknown") + ")");
+              const knownQuantities = variants
+                .map(variant => variant?.inventory_quantity)
+                .filter(quantity => quantity !== null && quantity !== undefined && Number.isFinite(Number(quantity)));
+              liveQuantity = knownQuantities.length
+                ? knownQuantities.reduce((sum, quantity) => sum + Math.max(0, Number(quantity)), 0)
+                : null;
+              console.log("[LIVE INVENTORY] " + raw.handle + ": " + (available ? "PURCHASABLE" : "NOT PURCHASABLE") + " (qty: " + (liveQuantity ?? "unknown") + ")");
+            } else {
+              available = previousAvailable === null ? getAvailable(raw) : previousAvailable;
+              console.log("[LIVE INVENTORY] " + raw.handle + ": UNVERIFIED (empty variants; preserving prior state)");
+            }
           } else {
             available = previousAvailable === null ? false : previousAvailable;
           }
