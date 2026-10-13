@@ -1936,6 +1936,7 @@ client.on(
           .filter(
             p =>
               p.launchDate &&
+              p.available !== true &&
               (
                 p.upcoming === true ||
                 isFutureLaunchDate(p.launchDate)
