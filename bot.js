@@ -407,10 +407,13 @@ async function fetchProductPageInfo(
     const lower =
       html.toLowerCase();
 
+    // Do not treat the generic word "unavailable" as proof of sellout.
+    // Mattel hidden/upcoming pages can contain that word while the product
+    // itself is not marked sold out.
     result.explicitlySoldOut =
-      lower.includes("sold out") ||
-      lower.includes("out of stock") ||
-      lower.includes("unavailable");
+      /\\bsold[ -]?out\\b/i.test(lower) ||
+      /\\bout of stock\\b/i.test(lower) ||
+      /\\bcurrently unavailable\\b/i.test(lower);
 
     if (checkLaunch) {
       result.launchDate =
@@ -1102,6 +1105,32 @@ async function scanForNewProducts() {
               newProductAlertedIds
             );
 
+        } else if (
+          product.productPageFetched &&
+          !product.explicitlySoldOut &&
+          !product.launchDate &&
+          !record.hiddenAlertSent
+        ) {
+          // A catalog-baselined product can still be a hidden discovery.
+          // Do not require created_at to be newer than lastScanAt for this path.
+          record.wasHidden = true;
+          record.hiddenAlertSent = true;
+          await sendToChannel(
+            channel,
+            makeEmbed(
+              "👻 POSSIBLE HIDDEN PRODUCT DETECTED",
+              0xffcc00,
+              product,
+              [
+                { name: "📦 Product", value: product.title },
+                { name: "👀 Status", value: "NOT AVAILABLE YET", inline: true },
+                { name: "💲 Price", value: `${product.price || "Unknown"}`, inline: true },
+                { name: "🔗 Product Page", value: product.url }
+              ]
+            )
+          );
+          addAlert(alerts, `👻 ${product.title}`);
+          console.log(`👻 Hidden product alert sent despite baseline: ${product.title}`);
         } else {
 
           console.log(
