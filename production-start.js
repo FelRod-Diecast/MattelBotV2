@@ -165,6 +165,22 @@ replaceRequired(
 
 
 replaceRequired(
+  "preserve saved upcoming opportunities",
+  /existing\\.upcoming =\\s*product\\.upcoming \\|\\|\\s*false;\\s*existing\\.launchDate =\\s*product\\.launchDate \\|\\|\\s*null;/,
+  `existing.upcoming =
+      product.upcoming === true ||
+      (
+        existing.upcoming === true &&
+        !(product.liveInventoryVerified === true && product.available === true)
+      );
+
+    existing.launchDate =
+      product.launchDate ||
+      existing.launchDate ||
+      null;`
+);
+
+replaceRequired(
   "live inventory verification",
   /const available =\s*getAvailable\(raw\);/,
   `let available = getAvailable(raw);
