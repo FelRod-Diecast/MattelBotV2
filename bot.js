@@ -526,22 +526,22 @@ function addAlert(
 // PRODUCT RECORD
 // =========================
 
-function isFutureLaunchDate(value) {
-  if (!value) return false;
+function parseLaunchTimestamp(value) {
+  if (!value) return null;
   const raw = String(value).trim();
   const direct = Date.parse(raw);
-  if (Number.isFinite(direct)) return direct > Date.now();
+  if (Number.isFinite(direct)) return direct;
 
   const match = raw.match(
     /^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})\s+(\d{1,2}):(\d{2})\s*(am|pm)\s*PT$/i
   );
-  if (!match) return false;
+  if (!match) return null;
   const months = {
     january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
     july: 6, august: 7, september: 8, october: 9, november: 10, december: 11
   };
   const month = months[match[1].toLowerCase()];
-  if (month === undefined) return false;
+  if (month === undefined) return null;
   let hour = Number(match[4]);
   if (match[6].toLowerCase() === "pm" && hour !== 12) hour += 12;
   if (match[6].toLowerCase() === "am" && hour === 12) hour = 0;
@@ -554,10 +554,14 @@ function isFutureLaunchDate(value) {
   const offsetMinutes = offset
     ? (Number(offset[2]) * 60 + Number(offset[3] || 0)) * (offset[1] === "+" ? 1 : -1)
     : -480;
-  const timestamp = Date.UTC(
+  return Date.UTC(
     Number(match[3]), month, Number(match[2]), hour, Number(match[5])
   ) - offsetMinutes * 60000;
-  return timestamp > Date.now();
+}
+
+function isFutureLaunchDate(value) {
+  const timestamp = parseLaunchTimestamp(value);
+  return Number.isFinite(timestamp) && timestamp > Date.now();
 }
 
 function ensureRecord(
@@ -1934,12 +1938,8 @@ client.on(
           )
           .sort(
             (a, b) =>
-              new Date(
-                a.launchDate
-              ) -
-              new Date(
-                b.launchDate
-              )
+              (parseLaunchTimestamp(a.launchDate) ?? Number.MAX_SAFE_INTEGER) -
+              (parseLaunchTimestamp(b.launchDate) ?? Number.MAX_SAFE_INTEGER)
           )
           .slice(0, 15);
 
