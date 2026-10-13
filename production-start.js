@@ -23,7 +23,7 @@ function replaceRequired(label, pattern, replacement) {
 replaceRequired(
   "launch parser",
   /function parseLaunchDate\(text\) \{[\s\S]*?\n\}\n\n\/\/ =========================\n\/\/ MATTEL PRODUCT CATALOG/,
-  `function parseUpcomingInfo(text) {
+  String.raw`function parseUpcomingInfo(text) {
   if (!text) {
     return {
       upcoming: false,
@@ -164,21 +164,6 @@ replaceRequired(
 );
 
 
-replaceRequired(
-  "preserve saved upcoming opportunities",
-  /existing\\.upcoming =\\s*product\\.upcoming \\|\\|\\s*false;\\s*existing\\.launchDate =\\s*product\\.launchDate \\|\\|\\s*null;/,
-  `existing.upcoming =
-      product.upcoming === true ||
-      (
-        existing.upcoming === true &&
-        !(product.liveInventoryVerified === true && product.available === true)
-      );
-
-    existing.launchDate =
-      product.launchDate ||
-      existing.launchDate ||
-      null;`
-);
 
 replaceRequired(
   "live inventory verification",
