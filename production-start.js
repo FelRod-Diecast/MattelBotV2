@@ -372,9 +372,11 @@ replaceRequired(
 );
 
 replaceRequired(
-  "smart upcoming discovery integration",
-  /    saveProducts\(\n      savedProducts\n    \);/,
-  `    await require("./hidden-discovery").runHiddenDiscovery({
+  "hidden source discovery before long catalog processing",
+  /    const processed = \[\];/,
+  `    // Run the bounded hidden-source pass before the full per-product loop.
+    // This ensures hidden discoveries can alert even if a later scan is interrupted.
+    await require("./hidden-discovery").runHiddenDiscovery({
       catalog,
       savedProducts,
       channel,
@@ -386,7 +388,13 @@ replaceRequired(
       productUrl
     });
 
-    await require("./upcoming-discovery").runSmartUpcomingDiscovery({
+    const processed = [];`
+);
+
+replaceRequired(
+  "smart upcoming discovery integration",
+  /    saveProducts\(\n      savedProducts\n    \);/,
+  `    await require("./upcoming-discovery").runSmartUpcomingDiscovery({
       catalog,
       savedProducts,
       channel,
