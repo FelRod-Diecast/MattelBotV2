@@ -342,17 +342,109 @@ function addAlert`
 );
 
 replaceRequired(
-  "catalog timeout",
-  /await fetch\(url, \{\n        headers: \{\n          "User-Agent":\n            "Mozilla\/5\.0 MattelBotV2"\n        \}\n      \}\);/,
-  `await fetch(url, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 MattelBotV2"
-        },
-        signal: AbortSignal.timeout(15000)
-      });`
-);
+  "catalog retry and pacing",
+  /async function getMattelProducts\(\) \{[\s\S]*?\n\}\n\n\/\/ =========================\n\/\/ PRODUCT PAGE CHECK/,
+  String.raw\`async function getMattelProducts() {
+  const products = [];
+  const seen = new Set();
+  let page = 1;
 
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  while (true) {
+    const url =
+      "https://creations.mattel.com/products.json?limit=250&page=" + page;
+    let response = null;
+    let lastError = null;
+
+    // Mattel occasionally rate-limits catalog requests. Honor Retry-After,
+    // back off on 429/5xx/network failures, and never treat a failed page as empty.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        response = await fetch(url, {
+          headers: {
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 MattelBotV2"
+          },
+          signal: AbortSignal.timeout(15000)
+        });
+
+        if (response.ok) {
+          break;
+        }
+
+        const status = response.status;
+        if (status !== 429 && status < 500) {
+          throw new Error("Mattel catalog HTTP " + status + " (not retryable)");
+        }
+
+        lastError = new Error("Mattel catalog HTTP " + status);
+        if (attempt === 3) break;
+
+        const retryAfter = response.headers?.get("retry-after");
+        let delayMs = 2000 * Math.pow(2, attempt);
+        if (retryAfter) {
+          const seconds = Number(retryAfter);
+          const retryDate = Date.parse(retryAfter);
+          if (Number.isFinite(seconds) && seconds >= 0) {
+            delayMs = seconds * 1000;
+          } else if (Number.isFinite(retryDate)) {
+            delayMs = Math.max(0, retryDate - Date.now());
+          }
+        }
+        delayMs = Math.min(30000, Math.max(1000, delayMs));
+        console.warn("[CATALOG] HTTP " + status + " on page " + page +
+          "; retry " + (attempt + 1) + "/3 in " + delayMs + "ms");
+        await wait(delayMs);
+        response = null;
+      } catch (error) {
+        if (error?.message?.includes("(not retryable)")) throw error;
+        lastError = error;
+        if (attempt === 3) break;
+        const delayMs = Math.min(30000, 2000 * Math.pow(2, attempt));
+        console.warn("[CATALOG] Request failed on page " + page +
+          "; retry " + (attempt + 1) + "/3 in " + delayMs + "ms: " +
+          (error?.message || error));
+        await wait(delayMs);
+        response = null;
+      }
+    }
+
+    if (!response?.ok) {
+      throw new Error(
+        "Mattel catalog page " + page + " failed after 4 attempts: " +
+        (lastError?.message || "no successful response")
+      );
+    }
+
+    const data = await response.json();
+    const batch = Array.isArray(data?.products) ? data.products : [];
+
+    if (!batch.length) break;
+
+    for (const product of batch) {
+      const id = String(product?.id || "");
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        products.push(product);
+      }
+    }
+
+    console.log("📄 Mattel catalog page " + page + ": " + batch.length + " products");
+    if (batch.length < 250) break;
+
+    page++;
+    // Avoid hammering the catalog while walking multiple pages.
+    await wait(1200);
+  }
+
+  console.log("📦 Mattel catalog total: " + products.length);
+  return products;
+}
+
+// =========================
+// PRODUCT PAGE CHECK\`
+);
 replaceRequired(
   "product timeout",
   /await fetch\(\n        productUrl\(handle\),\n        \{\n          headers: \{\n            "User-Agent":\n              "Mozilla\/5\.0 MattelBotV2"\n          \}\n        \}\n      \);/,
