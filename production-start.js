@@ -344,7 +344,7 @@ function addAlert`
 replaceRequired(
   "catalog retry and pacing",
   /async function getMattelProducts\(\) \{[\s\S]*?\n\}\n\n\/\/ =========================\n\/\/ PRODUCT PAGE CHECK/,
-  String.raw\`async function getMattelProducts() {
+  String.raw`async function getMattelProducts() {
   const products = [];
   const seen = new Set();
   let page = 1;
@@ -443,7 +443,7 @@ replaceRequired(
 }
 
 // =========================
-// PRODUCT PAGE CHECK\`
+// PRODUCT PAGE CHECK`
 );
 replaceRequired(
   "product timeout",
