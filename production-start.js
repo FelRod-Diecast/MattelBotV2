@@ -174,7 +174,7 @@ replaceRequired(
 
       // Verify Shopify stock before emitting stock transitions. On request
       // failure, preserve the last known state rather than invent a transition.
-      if (raw.handle && (available || previousAvailable !== null)) {
+      if (raw.handle && (available === true || previousAvailable === true)) {
         try {
           const liveResponse = await fetch(
             "https://creations.mattel.com/products/" + raw.handle + ".js",
