@@ -947,10 +947,9 @@ async function scanForNewProducts() {
         launchDate: null
       };
 
-      if (
-        !available ||
-        shouldCheckLaunch
-      ) {
+      // Recheck launch pages for launch-sensitive products, and check other
+      // pages only when a previously available item may have sold out.
+      if (shouldCheckLaunch || (previousAvailable === true && !available)) {
 
         pageInfo =
           await fetchProductPageInfo(
