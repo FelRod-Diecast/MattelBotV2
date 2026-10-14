@@ -392,7 +392,7 @@ replaceRequired(
             delayMs = Math.max(0, retryDate - Date.now());
           }
         }
-        delayMs = Math.min(30000, Math.max(1000, delayMs));
+        delayMs = retryAfter ? Math.max(1000, delayMs) : Math.min(30000, Math.max(1000, delayMs));
         console.warn("[CATALOG] HTTP " + status + " on page " + page +
           "; retry " + (attempt + 1) + "/3 in " + delayMs + "ms");
         await wait(delayMs);
