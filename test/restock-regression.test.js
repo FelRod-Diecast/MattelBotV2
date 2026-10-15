@@ -65,7 +65,7 @@ test("production audits a bounded rotating batch of tracked sold-out products", 
   assert.match(launcher, /restockAuditHandles\.has\(raw\.handle\)/);
   assert.match(launcher, /if \(raw\.handle && \(available === true \|\| previousAvailable === true \|\| restockAuditHandles\.has\(raw\.handle\)\)\)/);
   assert.match(launcher, /liveInventoryVerified = true/);
-  assert.match(launcher, /previousLiveInventoryVerified === true/);
+  assert.doesNotMatch(launcher, /previousLiveInventoryVerified === true/);
 });
 
 test("rotating audit covers every tracked sold-out handle without duplicates per batch", () => {
