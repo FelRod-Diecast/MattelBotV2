@@ -167,7 +167,7 @@ replaceRequired(
 replaceRequired(
   "bounded sold-out inventory audit",
   /const processed = \[\];/,
-  \`const processed = [];
+  `const processed = [];
 
     // Rotate through tracked sold-out products even when the catalog is stale.
     // This catches real restocks without requesting every product page every scan.
@@ -202,7 +202,7 @@ replaceRequired(
       : 0;
 
     console.log("[RESTOCK AUDIT] Checking " + auditCount +
-      " of " + soldOutAuditCandidates.length + " tracked sold-out products.");\`
+      " of " + soldOutAuditCandidates.length + " tracked sold-out products.");`
 );
 
 replaceRequired(
