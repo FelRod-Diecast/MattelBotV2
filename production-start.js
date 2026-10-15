@@ -217,8 +217,7 @@ replaceRequired(
       // failure, preserve the last known state rather than invent a transition.
       if (raw.handle && (available === true || previousAvailable === true || restockAuditHandles.has(raw.handle))) {
         try {
-          const liveResponse = await fetch(
-            "https://creations.mattel.com/products/" + raw.handle + ".js",
+          const liveResponse = await fetch(            "https://creations.mattel.com/products/" + raw.handle + ".js",
             {
               headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 MattelBotV2" },
               signal: AbortSignal.timeout(8000)
@@ -306,7 +305,6 @@ replaceRequired(
   "restock live verification guard",
   /previousAvailable === false &&\s*product\.available === true/,
   `previousAvailable === false &&
-          previousLiveInventoryVerified === true &&
           product.available === true &&
           product.liveInventoryVerified === true`
 );
@@ -437,8 +435,7 @@ replaceRequired(
     // Mattel occasionally rate-limits catalog requests. Honor Retry-After,
     // back off on 429/5xx/network failures, and never treat a failed page as empty.
     for (let attempt = 0; attempt < 4; attempt++) {
-      try {
-        response = await fetch(url, {
+      try {        response = await fetch(url, {
           headers: {
             "Accept": "application/json",
             "User-Agent": "Mozilla/5.0 MattelBotV2"
