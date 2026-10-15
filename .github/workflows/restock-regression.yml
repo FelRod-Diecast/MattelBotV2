@@ -16,8 +16,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-      - run: npm ci
       - run: node --check bot.js
       - run: node --check production-start.js
       - run: node --check upcoming-discovery.js
