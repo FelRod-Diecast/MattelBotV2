@@ -56,8 +56,24 @@ test("legacy stale sold-out records cannot trigger a fake restock on first live 
   }), true);
 });
 
-test("production patch has the required live-inventory and audit guard", () => {
-  assert.match(launcher, /if \(raw\.handle && \(available === true \|\| previousAvailable === true\)\)/);
-  assert.doesNotMatch(launcher, /restockAuditHandles|soldOutAuditCandidates/);
+test("production audits a bounded rotating batch of tracked sold-out products", () => {
+  assert.match(launcher, /"bounded sold-out inventory audit"/);
+  assert.match(launcher, /savedProducts\[String\(raw\.id\)\]\?\.available === false/);
+  assert.match(launcher, /const restockAuditBatchSize = 10/);
+  assert.match(launcher, /restockAuditHandles\.has\(raw\.handle\)/);
+  assert.match(launcher, /if \(raw\.handle && \(available === true \|\| previousAvailable === true \|\| restockAuditHandles\.has\(raw\.handle\)\)\)/);
   assert.match(launcher, /liveInventoryVerified = true/);
+  assert.match(launcher, /previousLiveInventoryVerified === true/);
+});
+
+test("rotating audit covers every tracked sold-out handle without duplicates per batch", () => {
+  const handles = Array.from({ length: 23 }, (_, i) => "product-" + i);
+  const first = selectAuditBatch(handles, 0, 10);
+  const second = selectAuditBatch(handles, first.cursor, 10);
+  const third = selectAuditBatch(handles, second.cursor, 10);
+  assert.equal(first.selected.length, 10);
+  assert.equal(second.selected.length, 10);
+  assert.equal(third.selected.length, 3);
+  assert.equal(new Set([...first.selected, ...second.selected, ...third.selected]).size, 23);
+  assert.equal(selectAuditBatch([], 0, 10).selected.length, 0);
 });
