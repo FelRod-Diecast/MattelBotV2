@@ -1,0 +1,24 @@
+name: Restock regression checks
+
+on:
+  push:
+    branches:
+      - upcoming-smart-discovery
+  pull_request:
+    branches:
+      - upcoming-smart-discovery
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node --check bot.js
+      - run: node --check production-start.js
+      - run: node --check upcoming-discovery.js
+      - run: node --test test/restock-regression.test.js
