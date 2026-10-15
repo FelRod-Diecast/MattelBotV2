@@ -165,6 +165,45 @@ replaceRequired(
 
 
 replaceRequired(
+  "bounded sold-out inventory audit",
+  /const processed = \[\];/,
+  `const processed = [];
+
+    // Audit a small rotating batch of tracked sold-out items each scan.
+    // This catches catalog-stale restocks without hammering every Mattel product endpoint.
+    const soldOutAuditCandidates = candidates
+      .filter(raw =>
+        raw?.handle &&
+        savedProducts[String(raw.id)]?.available === false
+      )
+      .sort((a, b) =>
+        String(a.handle).localeCompare(String(b.handle))
+      );
+
+    const restockAuditBatchSize = 10;
+    const restockAuditCursor = Number.isFinite(Number(stats.restockAuditCursor))
+      ? Math.max(0, Number(stats.restockAuditCursor))
+      : 0;
+    const restockAuditHandles = new Set();
+    const auditCount = Math.min(restockAuditBatchSize, soldOutAuditCandidates.length);
+    const auditStart = soldOutAuditCandidates.length
+      ? restockAuditCursor % soldOutAuditCandidates.length
+      : 0;
+
+    for (let i = 0; i < auditCount; i++) {
+      const audited = soldOutAuditCandidates[
+        (auditStart + i) % soldOutAuditCandidates.length
+      ];
+      restockAuditHandles.add(audited.handle);
+    }
+
+    stats.restockAuditCursor = soldOutAuditCandidates.length
+      ? (auditStart + auditCount) % soldOutAuditCandidates.length
+      : 0;
+`
+);
+
+replaceRequired(
   "live inventory verification",
   /const available =\s*getAvailable\(raw\);/,
   `let available = getAvailable(raw);
@@ -174,7 +213,7 @@ replaceRequired(
 
       // Verify Shopify stock before emitting stock transitions. On request
       // failure, preserve the last known state rather than invent a transition.
-      if (raw.handle && (available === true || previousAvailable === true)) {
+      if (raw.handle && (available === true || previousAvailable === true || restockAuditHandles.has(raw.handle))) {
         try {
           const liveResponse = await fetch(
             "https://creations.mattel.com/products/" + raw.handle + ".js",
@@ -188,10 +227,9 @@ replaceRequired(
             const liveProduct = await liveResponse.json();
             const variants = Array.isArray(liveProduct?.variants) ? liveProduct.variants : [];
             const purchasableVariants = variants.filter(variant => {
-              if (variant?.available !== true) return false;
-              const quantity = variant?.inventory_quantity;
-              return quantity === null || quantity === undefined ||
-                !Number.isFinite(Number(quantity)) || Number(quantity) > 0;
+              // Shopify `available` is the purchaseability signal. Inventory quantity
+              // can legitimately be zero for backorder/continue-selling variants.
+              return variant?.available === true;
             });
 
             if (variants.length > 0) {
