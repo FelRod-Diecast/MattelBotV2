@@ -265,9 +265,46 @@ replaceRequired(
         liveQuantity,`
 );
 replaceRequired(
+  "prior live inventory verification state",
+  /const previousAvailable =\n        existing\n          \? existing\.available === true\n          : null;/,
+  `const previousAvailable =
+        existing
+          ? existing.available === true
+          : null;
+
+      // Legacy saved states were not verified against live Shopify inventory.
+      const previousLiveInventoryVerified =
+        existing?.liveInventoryVerified === true;`
+);
+
+replaceRequired(
+  "persist live inventory verification",
+  /existing\.lastSeen =\n      now;/,
+  `existing.lastSeen =
+      now;
+
+    // Preserve verification across scans so first-time audits cannot trigger fake restocks.
+    existing.liveInventoryVerified =
+      product.liveInventoryVerified === true ||
+      existing.liveInventoryVerified === true;`
+);
+
+replaceRequired(
+  "initialize live inventory verification",
+  /    available,\n\n    price,/,
+  `    available,
+
+    liveInventoryVerified:
+      product.liveInventoryVerified === true,
+
+    price,`
+);
+
+replaceRequired(
   "restock live verification guard",
   /previousAvailable === false &&\s*product\.available === true/,
   `previousAvailable === false &&
+          previousLiveInventoryVerified === true &&
           product.available === true &&
           product.liveInventoryVerified === true`
 );
