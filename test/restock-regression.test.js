@@ -32,28 +32,30 @@ test("Shopify variant availability is authoritative when quantity is zero", () =
   assert.equal(isPurchasable({ inventory_quantity: 12 }), false);
 });
 
-test("legacy stale sold-out records cannot trigger a fake restock on first live audit", () => {
+test("first verified live audit alerts when a tracked sold-out product is purchasable", () => {
   assert.match(launcher, /"prior live inventory verification state"/);
-  assert.match(launcher, /previousLiveInventoryVerified === true/);
+  assert.doesNotMatch(launcher, /previousLiveInventoryVerified === true/);
   assert.match(launcher, /"persist live inventory verification"/);
   assert.match(launcher, /existing\.liveInventoryVerified =/);
-  const shouldAlertRestock = ({ previousAvailable, previousLiveInventoryVerified, currentAvailable, currentLiveInventoryVerified }) =>
+  const shouldAlertRestock = ({ previousAvailable, currentAvailable, currentLiveInventoryVerified }) =>
     previousAvailable === false &&
-    previousLiveInventoryVerified === true &&
     currentAvailable === true &&
     currentLiveInventoryVerified === true;
   assert.equal(shouldAlertRestock({
     previousAvailable: false,
-    previousLiveInventoryVerified: false,
-    currentAvailable: true,
-    currentLiveInventoryVerified: true
-  }), false);
-  assert.equal(shouldAlertRestock({
-    previousAvailable: false,
-    previousLiveInventoryVerified: true,
     currentAvailable: true,
     currentLiveInventoryVerified: true
   }), true);
+  assert.equal(shouldAlertRestock({
+    previousAvailable: false,
+    currentAvailable: true,
+    currentLiveInventoryVerified: false
+  }), false);
+  assert.equal(shouldAlertRestock({
+    previousAvailable: true,
+    currentAvailable: true,
+    currentLiveInventoryVerified: true
+  }), false);
 });
 
 test("production audits a bounded rotating batch of tracked sold-out products", () => {
