@@ -1,3 +1,4 @@
+// Regression coverage for the Smart Discovery restock fix; uses Node built-ins only.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
