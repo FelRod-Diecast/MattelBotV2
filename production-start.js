@@ -227,7 +227,7 @@ replaceRequired(
             const liveProduct = await liveResponse.json();
             const variants = Array.isArray(liveProduct?.variants) ? liveProduct.variants : [];
             const purchasableVariants = variants.filter(variant => {
-              // Shopify `available` is the purchaseability signal. Inventory quantity
+              // Shopify available flag is the purchaseability signal. Inventory quantity
               // can legitimately be zero for backorder/continue-selling variants.
               return variant?.available === true;
             });
